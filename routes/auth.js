@@ -1,6 +1,7 @@
 const express = require('express');
 const argon2 = require('argon2');
 const { check, validationResult } = require('express-validator');
+const nodemailer = require('nodemailer');
 
 const router = express.Router();
 
@@ -107,8 +108,8 @@ router.post('/register', RegisterValidator, async (req, res, next) => {
   try {
     var result = validationResult(req);
     console.log(req.body);
-    var { fullname, email, password, confirmPassword, birthday, phone, address } = req.body;
-      
+    var { fullname, email, password, confirmPassword, birthday, phone, address, role } = req.body;
+
 
     if (result.errors.length !== 0) {
       result = result.mapped();
@@ -141,12 +142,13 @@ router.post('/register', RegisterValidator, async (req, res, next) => {
     }
     
     var hashed = await argon2.hash(password);
-    await UserModel.create({ fullname, email, birthday, phone, address, password: hashed });
+    // If role is '2' (from checkbox), use it. Otherwise, default to 1 (patient).
+    const userRole = role === '2' ? 2 : 1;
+
+    await UserModel.create({ fullname, email, birthday, phone, address, password: hashed, role: userRole });
     
-    while (true) {
-      req.flash('success', "Đăng ký tài khoản thành công!");
-      return res.redirect('/auth/login');
-    }
+    req.flash('success', "Đăng ký tài khoản thành công!");
+    return res.redirect('/auth/login');
   } catch (error) {
     return res.status(500).render('error', { error: { status: 500, stack: 'Unable to connect to the system, please try again!' }, message: 'Connection errors' });
   }
@@ -192,32 +194,26 @@ router.post('/reset-password', ResetPasswordValidator, async (req, res, next) =>
     }
 
     var password = Math.random().toString(36).slice(-6);
+    password = password.charAt(0).toUpperCase() + password.slice(1) + '1@';
     var hashed = await argon2.hash(password);
 
-    UserModel.findByIdAndUpdate(user.id, { password: hashed }, (error, data) => {
-      if (error) {
-        req.flash('error', 'Lỗi trong quá trình xữ lý, vui lòng thử lại!')
-        return res.redirect('/auth/reset-password');
-      }
-    })
+    const updatedUser = await UserModel.findByIdAndUpdate(user.id, { password: hashed }).exec();
+    if (!updatedUser) {
+      req.flash('error', 'Lỗi trong quá trình xử lý, không tìm thấy người dùng để cập nhật!');
+      return res.redirect('/auth/reset-password');
+    }
 
-    PasswordModel.findOneAndUpdate({ id_user: user.id }, { status: 0 }, (error, data) => {
-      if (error) {
-        req.flash('error', 'Lỗi trong quá trình xữ lý, vui lòng thử lại!')
-        return res.redirect('/auth/reset-password');
-      }
-    })
 
     var transporter = nodemailer.createTransport({
       service: 'gmail',
       auth: {
-        user: `${mailUser}`,
-        pass: `${mailPass}#`,
+        user: process.env.MAIL_USER,
+        pass: process.env.MAIL_PASS,
       },
     });
 
     transporter.sendMail({
-      from: `${mailUser}`,
+      from: process.env.mailUser,
       to: `${email}`,
       subject: '[TB] THÔNG TIN TÀI KHOẢN KHÁCH HÀNG - BỆNH VIỆN XXXXXX',
       html: `<p>Vui lòng không chia sẻ thông tin này đến bất kỳ ai. 
@@ -227,6 +223,8 @@ router.post('/reset-password', ResetPasswordValidator, async (req, res, next) =>
       <b>Mật khẩu mới: </b>${password} 
       <p>Trân trọng ./.</p>`,
     });
+
+    console.log("debug 5");
 
     req.flash('success', 1);
     return res.redirect('/auth/email');

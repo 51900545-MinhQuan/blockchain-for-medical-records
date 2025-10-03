@@ -7,7 +7,7 @@ const user = new mongoose.Schema({
     phone: String,
     address: String,
     password: String,
-    role: { type: Number, default: 1 }, // 0: Admin, 1: User
+    role: { type: Number, default: 1 }, // 0: Admin, 1: User, 2: Doctor
     created_at: { type: Date, default: Date },
 }, { collection: 'user', versionKey: false });
 

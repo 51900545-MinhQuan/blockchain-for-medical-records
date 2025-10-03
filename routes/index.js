@@ -12,6 +12,7 @@ const Auth = require('../middleware/auth');
 
 // Import Validators
 const ChangePasswordValidator = require('./validators/change-password');
+const UpdateProfileValidator = require('./validators/update-profile');
 
 /*
 |------------------------------------------------------------------------------------------------------
@@ -47,9 +48,44 @@ router.get('/profile', function (req, res, next) {
   try {
     res.render('user/profile', {
       user: req.session.user,
+      success: req.flash('success') || '',
       error: req.flash('error') || '',
     });
   } catch (error) {
+    return res.status(500).render('error', { error: { status: 500, stack: 'Unable to connect to the system, please try again!' }, message: 'Connection errors' });
+  }
+});
+
+router.post('/profile', UpdateProfileValidator, async function (req, res, next) {
+  try {
+    const result = validationResult(req);
+    if (result.errors.length > 0) {
+      req.flash('error', result.errors[0].msg);
+      return res.redirect('/profile');
+    }
+
+    const { fullname, birthday, phone, address } = req.body;
+
+    const updatedUser = await UserModel.findByIdAndUpdate(
+      req.session.user.id,
+      { fullname, birthday, phone, address },
+      { new: true }
+    ).exec();
+
+    if (!updatedUser) {
+      req.flash('error', 'Không tìm thấy người dùng để cập nhật.');
+      return res.redirect('/profile');
+    }
+
+    req.session.user.fullname = updatedUser.fullname;
+    req.session.user.birthday = updatedUser.birthday;
+    req.session.user.phone = updatedUser.phone;
+    req.session.user.address = updatedUser.address;
+
+    req.flash('success', 'Cập nhật thông tin tài khoản thành công!');
+    res.redirect('/profile');
+  } catch (error) {
+    console.error(error);
     return res.status(500).render('error', { error: { status: 500, stack: 'Unable to connect to the system, please try again!' }, message: 'Connection errors' });
   }
 });
