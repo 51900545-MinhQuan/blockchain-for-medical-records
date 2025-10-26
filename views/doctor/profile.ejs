@@ -9,7 +9,7 @@
                 <h5 class="m-b-10">Thông tin tài khoản</h5>
               </div>
               <ul class="breadcrumb">
-                <li class="breadcrumb-item"><a href="/"><i class="feather icon-home"></i></a></li>
+                <li class="breadcrumb-item"><a href="/doctor"><i class="feather icon-home"></i></a></li>
                 <li class="breadcrumb-item"><a>Tài khoản</a></li>
                 <li class="breadcrumb-item"><a>Thông tin tài khoản</a></li>
               </ul>
@@ -21,7 +21,7 @@
         <div class="col-sm-12">
           <div class="card">
             <div class="card-body">
-              <form action="/profile" method="POST">
+              <form action="/doctor/profile" method="POST">
                 <div class="row">
                   <div class="col-md-6">
                     <div class="form-group">
@@ -45,12 +45,6 @@
                     <div class="form-group">
                       <label>Số điện thoại</label>
                       <input type="text" class="form-control" name="phone" value="<%= user.phone %>">
-                    </div>
-                  </div>
-                  <div class="col-md-6">
-                    <div class="form-group">
-                      <label>CMND/CCCD</label>
-                      <input type="text" class="form-control" name="identificationNumber" value="<%= user.identificationNumber %>" readonly>
                     </div>
                   </div>
                   <div class="col-md-12">

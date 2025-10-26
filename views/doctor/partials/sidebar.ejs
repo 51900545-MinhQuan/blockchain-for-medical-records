@@ -1,0 +1,88 @@
+<!-- [ navigation menu ] start -->
+<nav class="pcoded-navbar">
+  <div class="navbar-wrapper">
+    <div class="navbar-content scroll-div">
+      <div class="">
+        <div class="main-menu-header">
+          <div class="user-details">
+            <span class="role-badge">Bác sĩ</span>
+            <span class="sidebar-username"><%= user.fullname %></span>
+          </div>
+        </div>
+      </div>
+      <ul class="nav pcoded-inner-navbar">
+        <!-- ===== QUẢN LÝ HỒ SƠ ===== -->
+        <li class="nav-item pcoded-menu-caption">
+          <label>Quản lý hồ sơ</label>
+        </li>
+
+        <!-- Hồ sơ bệnh nhân -->
+        <li class="nav-item pcoded-hasmenu">
+          <a href="#!" class="nav-link">
+            <span class="pcoded-micon"><i class="feather icon-users"></i></span>
+            <span class="pcoded-mtext">Hồ sơ bệnh nhân</span>
+          </a>
+          <ul class="pcoded-submenu">
+            <li><a href="/doctor/patients">Danh sách bệnh nhân</a></li>
+            <li><a href="/doctor/patients/create">Tạo hồ sơ bệnh nhân</a></li>
+          </ul>
+        </li>
+
+        <!-- Hồ sơ bệnh án -->
+        <li class="nav-item pcoded-hasmenu">
+          <a href="#!" class="nav-link">
+            <span class="pcoded-micon"><i class="feather icon-file-text"></i></span>
+            <span class="pcoded-mtext">Hồ sơ bệnh án</span>
+          </a>
+          <ul class="pcoded-submenu">
+            <li><a href="/doctor/records">Danh sách bệnh án</a></li>
+          </ul>
+        </li>
+
+        <!-- ===== THAO TÁC KHÁC ===== -->
+        <li class="nav-item pcoded-menu-caption">
+          <label>Quản lý tài khoản</label>
+        </li>
+        <li class="nav-item">
+          <a href="/doctor/profile" class="nav-link">
+            <span class="pcoded-micon"><i class="feather icon-user"></i></span>
+            <span class="pcoded-mtext">Thông tin cá nhân</span>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a href="/doctor/change-password" class="nav-link">
+            <span class="pcoded-micon"><i class="feather icon-lock"></i></span>
+            <span class="pcoded-mtext">Đổi mật khẩu</span>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a href="/auth/logout" class="nav-link">
+            <span class="pcoded-micon"><i class="feather icon-log-out"></i></span>
+            <span class="pcoded-mtext">Đăng xuất</span>
+          </a>
+        </li>
+      </ul>
+    </div>
+  </div>
+</nav>
+
+<style>
+  .role-badge {
+    background: transparent;
+    border: 1px solid rgba(255,255,255,0.7);
+    color: rgba(255,255,255,0.9);
+    font-size: 0.85rem;
+    padding: 2px 8px;
+    border-radius: 6px;
+    margin-right: 5px;
+    display: inline-block;
+    vertical-align: middle;
+  }
+  .sidebar-username {
+    font-size: 0.95rem;
+    vertical-align: middle;
+  }
+
+</style>
+
+<!-- [ navigation menu ] end -->

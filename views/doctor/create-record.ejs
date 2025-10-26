@@ -1,0 +1,224 @@
+<%- include('./partials/header') %>
+
+<style>
+  /* Hide arrows from number input fields */
+  /* Chrome, Safari, Edge, Opera */
+  input::-webkit-outer-spin-button,
+  input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  /* Firefox */
+  input[type=number] {
+    -moz-appearance: textfield;
+  }
+</style>
+
+  <div class="pcoded-main-container">
+    <div class="pcoded-content">
+      <div class="page-header">
+        <div class="page-block">
+          <div class="row align-items-center">
+            <div class="col-md-12">
+              <div class="page-header-title">
+                <h5 class="m-b-10">Tạo hồ sơ bệnh án</h5>
+              </div>
+              <ul class="breadcrumb">
+                <li class="breadcrumb-item"><a href="/doctor"><i class="feather icon-home"></i></a></li>
+                <li class="breadcrumb-item"><a>Hồ sơ bệnh án</a></li>
+                <li class="breadcrumb-item"><a>Tạo bệnh án mới</a></li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="row">
+        <div class="col-sm-12">
+          <div class="card">
+            <div class="card-body">
+              <form method="POST" action="/doctor/medical-records/create">
+                <div class="row">
+                  <div class="col-md-6">
+                    <div class="form-group">
+                      <label>Bệnh nhân <span class="text-danger">*</span></label>
+                      <% if (selectedPatientId) { %>
+                        <input type="text" class="form-control" value="<%= selectedPatient.patientCode %> - <%= selectedPatient.fullname %>" readonly>
+                        <input type="hidden" name="patientCode" value="<%= selectedPatient.patientCode %>" />
+                        <input type="hidden" name="patientId" value="<%= selectedPatientId %>" /> 
+                      <% } else { %>
+                        <input type="text" name="patientCode" class="form-control" placeholder="Nhập mã bệnh nhân" value="<%= oldData.patientCode || '' %>">
+                      <% } %>
+                    </div>
+                  </div>
+                  <div class="col-md-6">
+                    <div class="form-group">
+                      <label>Lý do khám <span class="text-danger">*</span></label>
+                      <input type="text" class="form-control" name="reasonForVisit"
+                        value="<%= oldData.reasonForVisit || '' %>">
+                    </div>
+                  </div>
+                  <div class="col-md-6">
+                    <div class="form-group">
+                      <label>Triệu chứng</label>
+                      <textarea name="symptoms" class="form-control" placeholder="Các triệu chứng, cách nhau bằng dấu phẩy"><%= oldData.symptoms || '' %></textarea>
+                    </div>
+                  </div>
+                  <div class="col-md-6">
+                    <div class="form-group">
+                      <label>Chẩn đoán <span class="text-danger">*</span></label>
+                      <input type="text" class="form-control" name="diagnosis" value="<%= oldData.diagnosis || '' %>">
+                    </div>
+                  </div>
+                  <div class="col-md-12">
+                    <div class="form-group">
+                      <label>Ghi chú</label>
+                      <textarea name="notes" class="form-control"><%= oldData.notes || '' %></textarea>
+                    </div>
+                  </div>
+
+                  <div class="col-12"><hr><h5>Thông tin y tế cơ bản</h5></div>
+                  <div class="col-md-3">
+                    <div class="form-group">
+                      <label>Chiều cao (cm)</label>
+                      <input type="number" step="0.1" class="form-control" name="height" value="<%= oldData.height || '' %>">
+                    </div>
+                  </div>
+                  <div class="col-md-3">
+                    <div class="form-group">
+                      <label>Cân nặng (kg)</label>
+                      <input type="number" step="0.1" class="form-control" name="weight" value="<%= oldData.weight || '' %>">
+                    </div>
+                  </div>
+                  <div class="col-md-2">
+                    <div class="form-group">
+                      <label>Nhiệt độ (°C)</label>
+                      <input type="number" step="0.1" class="form-control" name="temperature" value="<%= oldData.temperature || '' %>">
+                    </div>
+                  </div>
+                  <div class="col-md-2">
+                    <div class="form-group">
+                      <label>Huyết áp</label>
+                      <input type="text" class="form-control" name="bloodPressure" value="<%= oldData.bloodPressure || '' %>">
+                    </div>
+                  </div>
+                  <div class="col-md-2">
+                    <div class="form-group">
+                      <label>Nhịp tim (bpm)</label>
+                      <input type="number" class="form-control" name="pulse" value="<%= oldData.pulse || '' %>">
+                    </div>
+                  </div>
+
+                  <div class="col-12"><hr>
+                    <h5>Đơn thuốc</h5>
+                  </div>
+                  <div class="col-12">
+                    <div id="medication-list">    
+                        <div class="medication-row">
+                          <div class="row">
+                            <div class="col-md-3">
+                              <div class="form-group">
+                                <label>Tên thuốc</label>
+                                <input type="text" class="form-control" name="medication-name[]">
+                              </div>
+                            </div>
+                            <div class="col-md-3">
+                              <div class="form-group">
+                                <label>Liều lượng</label>
+                                <input type="text" class="form-control" name="medication-dosage[]">
+                              </div>
+                            </div>
+                            <div class="col-md-3">
+                              <div class="form-group">
+                                <label>Tần suất</label>
+                                <input type="text" class="form-control" name="medication-frequency[]">
+                              </div>
+                            </div>
+                            <div class="col-md-2">
+                              <div class="form-group">
+                                <label>Thời gian dùng</label>
+                                <input type="text" class="form-control" name="medication-duration[]">
+                              </div>
+                            </div>
+                            <div class="col-md-1">
+                              <button type="button" class="btn btn-sm btn-danger remove-medication"
+                                style="margin-top: 25px;">Xóa</button>
+                            </div>
+                          </div>
+                        </div>
+                    </div>
+                    <button type="button" id="add-medication" class="btn btn-sm btn-primary">Thêm thuốc</button>
+                  </div>
+
+                  <div class="col-12">
+                    <hr>
+                    <h5>Tái khám</h5>
+                  </div>
+                  <div class="col-md-6">
+                    <div class="form-group">
+                      <label>Ngày hẹn tái khám</label>
+                      <input type="date" class="form-control" name="followUpDate" value="<%= oldData.followUpDate ? new Date(oldData.followUpDate).toISOString().split('T')[0] : '' %>">
+                    </div>
+                  </div>
+                  <div class="col-md-6">
+                    <div class="form-group">
+                      <label>Ghi chú tái khám</label>
+                      <textarea name="followUpNote" class="form-control"><%= oldData.followUpNote || '' %></textarea>
+                    </div>
+                  </div>
+                </div>
+                <button type="submit" class="btn btn-primary">Lưu bệnh án</button>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+      <script>
+        document.getElementById('add-medication').addEventListener('click', function () {
+          const medicationList = document.getElementById('medication-list');
+          const lastRow = medicationList.querySelector('.medication-row:last-child');
+          const lastMedicationNameInput = lastRow.querySelector('input[name="medication-name[]"]');
+
+          // Prevent adding a new row if the last one is empty
+          if (lastMedicationNameInput && lastMedicationNameInput.value.trim() === '') {
+            toastr.warning('Vui lòng điền thông tin thuốc trước khi thêm mới.');
+            lastMedicationNameInput.focus();
+            return;
+          }
+
+          const newMedicationRow = lastRow.cloneNode(true);
+          newMedicationRow.querySelectorAll('input').forEach(input => input.value = '');
+          medicationList.appendChild(newMedicationRow);
+          updateRemoveButtons();
+        });
+
+        function updateRemoveButtons() {
+          const medicationRows = document.querySelectorAll('.medication-row');
+          medicationRows.forEach((row, index) => {
+            const removeBtn = row.querySelector('.remove-medication');
+            if (medicationRows.length > 1) {
+              removeBtn.style.display = 'block';
+            } else {
+              removeBtn.style.display = 'none';
+            }
+          });
+        }
+
+        // Add event listener for remove buttons using event delegation
+        document.getElementById('medication-list').addEventListener('click', function(event) {
+            if (event.target.classList.contains('remove-medication')) {
+                event.preventDefault();
+                const row = event.target.closest('.medication-row');
+                row.remove();
+                updateRemoveButtons();
+            }
+        });
+
+        // Initial check on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            updateRemoveButtons();
+        });
+      </script>
+    </div>
+  </div>
+
+<%- include('./partials/footer'); -%>

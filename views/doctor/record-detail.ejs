@@ -1,0 +1,135 @@
+<%- include('./partials/header') %>
+
+<div class="pcoded-main-container">
+  <div class="pcoded-content">
+    <div class="page-header">
+      <div class="page-block">
+        <div class="row align-items-center">
+          <div class="col-md-12">
+            <div class="page-header-title">
+              <h5 class="m-b-10">Chi tiết bệnh án: <%= record.recordCode %></h5>
+            </div>
+            <ul class="breadcrumb">
+              <li class="breadcrumb-item"><a href="/doctor"><i class="feather icon-home"></i></a></li>
+              <li class="breadcrumb-item"><a href="/doctor/patient/<%= record.patientID._id %>">Bệnh nhân: <%= record.patientID.fullname %></a></li>
+              <li class="breadcrumb-item"><a>Chi tiết bệnh án</a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row">
+      <!-- Thông tin chung -->
+      <div class="col-md-12">
+        <div class="card">
+          <div class="card-header">
+            <h5><i class="feather icon-file-text mr-2"></i>Thông tin chung</h5>
+          </div>
+          <div class="card-body">
+            <div class="row">
+              <div class="col-md-6">
+                <p><strong>Mã bệnh án:</strong> <%= record.recordCode %></p>
+                <p><strong>Bệnh nhân:</strong> <a href="/doctor/patient/<%= record.patientID._id %>"><%= record.patientID.fullname %> (<%= record.patientID.patientCode %>)</a></p>
+              </div>
+              <div class="col-md-6">
+                <p><strong>Ngày khám:</strong> <%= record.visitDate.toLocaleDateString('vi-VN') %></p>
+                <p><strong>Bác sĩ:</strong> <%= record.doctorID.fullname %></p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Chi tiết khám bệnh -->
+      <div class="col-md-12">
+        <div class="card">
+          <div class="card-header">
+            <h5><i class="feather icon-activity mr-2"></i>Chi tiết khám bệnh</h5>
+          </div>
+          <div class="card-body">
+            <p><strong>Lý do khám:</strong> <%= record.reasonForVisit %></p>
+            <p><strong>Triệu chứng:</strong> <%= record.symptoms.join(', ') || 'Không có' %></p>
+            <p><strong>Chẩn đoán:</strong> <%= record.diagnosis %></p>
+            <p><strong>Ghi chú của bác sĩ:</strong> <%= record.notes || 'Không có' %></p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Dấu hiệu sinh tồn -->
+      <div class="col-md-12">
+        <div class="card">
+          <div class="card-header">
+            <h5><i class="feather icon-heart mr-2"></i>Dấu hiệu sinh tồn</h5>
+          </div>
+          <div class="card-body">
+            <div class="row">
+              <div class="col-md-3"><p><strong>Chiều cao:</strong> <%= record.vitalSigns.height || 'N/A' %> cm</p></div>
+              <div class="col-md-3"><p><strong>Cân nặng:</strong> <%= record.vitalSigns.weight || 'N/A' %> kg</p></div>
+              <div class="col-md-2"><p><strong>Nhiệt độ:</strong> <%= record.vitalSigns.temperature || 'N/A' %> °C</p></div>
+              <div class="col-md-2"><p><strong>Huyết áp:</strong> <%= record.vitalSigns.bloodPressure || 'N/A' %></p></div>
+              <div class="col-md-2"><p><strong>Nhịp tim:</strong> <%= record.vitalSigns.pulse || 'N/A' %> bpm</p></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Đơn thuốc -->
+      <div class="col-md-12">
+        <div class="card">
+          <div class="card-header">
+            <h5><i class="feather icon-thermometer mr-2"></i>Đơn thuốc</h5>
+          </div>
+          <div class="card-body">
+            <% if (record.prescribedMedications && record.prescribedMedications.length > 0) { %>
+              <div class="table-responsive">
+                <table class="table table-bordered">
+                  <thead class="table-light">
+                    <tr>
+                      <th>Tên thuốc</th>
+                      <th>Liều lượng</th>
+                      <th>Tần suất</th>
+                      <th>Thời gian</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <% record.prescribedMedications.forEach(med => { %>
+                      <tr>
+                        <td><%= med.name %></td>
+                        <td><%= med.dosage %></td>
+                        <td><%= med.frequency %></td>
+                        <td><%= med.duration %></td>
+                      </tr>
+                    <% }) %>
+                  </tbody>
+                </table>
+              </div>
+            <% } else { %>
+              <p>Không có đơn thuốc.</p>
+            <% } %>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tái khám -->
+      <div class="col-md-12">
+        <div class="card">
+          <div class="card-header">
+            <h5><i class="feather icon-calendar mr-2"></i>Thông tin tái khám</h5>
+          </div>
+          <div class="card-body">
+            <% if (record.followUpDate) { %>
+              <p><strong>Ngày hẹn tái khám:</strong> <%= record.followUpDate.toLocaleDateString('vi-VN') %></p>
+              <p><strong>Ghi chú tái khám:</strong> <%= record.followUpNote || 'Không có' %></p>
+            <% } else { %>
+              <p>Không có lịch hẹn tái khám.</p>
+            <% } %>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<%- include('./partials/footer'); -%>

@@ -2,11 +2,13 @@ const express = require('express');
 const argon2 = require('argon2');
 const { check, validationResult } = require('express-validator');
 const nodemailer = require('nodemailer');
+const crypto = require('crypto');
 
 const router = express.Router();
 
 // Import Model
 const UserModel = require('../models/user');
+const PatientModel = require('../models/patient');
 
 // Import Middleware
 const Auth = require('../middleware/auth');
@@ -23,15 +25,8 @@ const ResetPasswordValidator = require('./validators/reset-password');
 */
 router.get('/login', Auth.checkLogin, async (req, res, next) => {
   try {
-    var user = await UserModel.findOne({ email: 'admin@gmail.com' }).exec();  // Tạo tài khoản admin mặc định
-    if (!user) {
-      var password = 'Admin123.';
-      var hashed = await argon2.hash(password);
-      await UserModel.create({ fullname: 'Quản trị viên', email: 'admin@gmail.com', birthday: null, phone: null, address: null, password: hashed, role: 0 }).exec();
-    }
-
     res.render('auth/login', {
-      error: req.flash('error') || '',
+      errors: req.flash('errors') || '',
       email: req.flash('email') || '',
     });
   } catch (error) {
@@ -41,26 +36,26 @@ router.get('/login', Auth.checkLogin, async (req, res, next) => {
 
 router.post('/login', LoginValidator, async (req, res, next) => {
   try {
-    var result = validationResult(req);
-    var { email, password } = req.body;
+    const result = validationResult(req);
+    const { email, password } = req.body;
 
     if (result.errors.length !== 0) {
-      result = result.mapped();
-      for (fields in result) {
-        req.flash('error', result[fields].msg);
-        return res.redirect('/auth/login');
-      }
+      req.flash('errors', result.errors[0].msg);
+      req.flash('email', email);
+      return res.redirect('/auth/login');
     }
 
-    var user = await UserModel.findOne({ email }).exec();
+    const user = await UserModel.findOne({ email });
     if (!user) {
-      req.flash('error', 'Email hoặc mật khẩu không tồn tại!');
+      req.flash('errors', 'Email hoặc mật khẩu không tồn tại!');
+      req.flash('email', email);
       return res.redirect('/auth/login');
     }
 
     var matched = await argon2.verify(user.password, password);
     if (!matched) {
-      req.flash('error', 'Email hoặc mật khẩu không tồn tại!');
+      req.flash('errors', 'Email hoặc mật khẩu không tồn tại!');
+      req.flash('email', email);
       return res.redirect('/auth/login');
     }
 
@@ -71,11 +66,15 @@ router.post('/login', LoginValidator, async (req, res, next) => {
       birthday: user.birthday,
       phone: user.phone,
       address: user.address,
+      identificationNumber: user.identificationNumber,
       role: user.role,
     };
 
     if (req.session.user.role == 0) {
       return res.redirect('/admin');
+    }
+    if (req.session.user.role == 2) {
+      return res.redirect('/doctor');
     }
 
     return res.redirect('/');
@@ -92,12 +91,13 @@ router.post('/login', LoginValidator, async (req, res, next) => {
 router.get('/register', Auth.checkLogin, async (req, res, next) => {
   try {
     res.render('auth/register', {
-      error: req.flash('error') || '',
+      errors: req.flash('errors') || '',
       fullname: req.flash('fullname') || '',
       email: req.flash('email') || '',
       birthday: req.flash('birthday') || '',
       phone: req.flash('phone') || '',
       address: req.flash('address') || '',
+      identificationNumber: req.flash('identificationNumber') || '',
     });
   } catch (error) {
     return res.status(500).render('error', { error: { status: 500, stack: 'Unable to connect to the system, please try again!' }, message: 'Connection errors' });
@@ -106,47 +106,48 @@ router.get('/register', Auth.checkLogin, async (req, res, next) => {
 
 router.post('/register', RegisterValidator, async (req, res, next) => {
   try {
-    var result = validationResult(req);
-    console.log(req.body);
-    var { fullname, email, password, confirmPassword, birthday, phone, address, role } = req.body;
+    const result = validationResult(req);
+    const { fullname, email, password, confirmPassword, birthday, phone, address, role, identificationNumber } = req.body;
 
+    const flashAndRedirect = (errorMsg) => {
+      req.flash('errors', errorMsg);
+      req.flash('fullname', fullname);
+      req.flash('email', email);
+      req.flash('birthday', birthday);
+      req.flash('phone', phone);
+      req.flash('address', address);
+      req.flash('identificationNumber', identificationNumber);
+      return res.redirect('/auth/register');
+    };
 
     if (result.errors.length !== 0) {
-      result = result.mapped();
-      for (fields in result) {
-        req.flash('error', result[fields].msg);
-        return res.redirect('/auth/register');
-      }
+      return flashAndRedirect(result.errors[0].msg);
     } 
 
-    if (!req.body) {
-      req.flash('error', 'Invalid request. Please try again.');
-      return res.redirect('/auth/register');
-    }
-    
+    const existingUser = await UserModel.findOne({
+      $or: [{ email }, { identificationNumber: identificationNumber || null }] 
+    });
 
-
-    if (await UserModel.findOne({ email }).exec()) {
-      req.flash('error', 'Địa chỉ Email đã tồn tại');
-      return res.redirect('/auth/register');
+    if (existingUser) {
+      let errorMsg;
+      if (existingUser.email === email) {
+        errorMsg = 'Địa chỉ Email đã tồn tại';
+      } else if (identificationNumber && existingUser.identificationNumber === identificationNumber) {
+        errorMsg = 'CMND/CCCD đã tồn tại!';
+      }
+      return flashAndRedirect(errorMsg);
     }
 
     if (password !== confirmPassword) {
-      req.flash('error', 'Mật khẩu không trùng khớp')
-      return res.redirect('/auth/register');
-    }
-
-    if (await UserModel.findOne({ phone }).exec()) {
-      req.flash('error', 'Số điện thoại đã tồn tại!');
-      return res.redirect('/auth/register');
+      return flashAndRedirect('Mật khẩu không trùng khớp');
     }
     
-    var hashed = await argon2.hash(password);
-    // If role is '2' (from checkbox), use it. Otherwise, default to 1 (patient).
+    const hashed = await argon2.hash(password);
+    // Nếu role là 2 (bác sĩ) thì gán role = 2, không thì (bệnh nhân) gán role = 1
     const userRole = role === '2' ? 2 : 1;
-
-    await UserModel.create({ fullname, email, birthday, phone, address, password: hashed, role: userRole });
+    const newUser = await UserModel.create({ fullname, email, birthday, phone, address, identificationNumber, password: hashed, role: userRole });
     
+
     req.flash('success', "Đăng ký tài khoản thành công!");
     return res.redirect('/auth/login');
   } catch (error) {
@@ -163,7 +164,7 @@ router.post('/register', RegisterValidator, async (req, res, next) => {
 router.get('/reset-password', (req, res, next) => {
   try {
     res.render('auth/reset-password', {
-      error: req.flash('error') || '',
+      errors: req.flash('errors') || '',
       email: req.flash('email') || '',
     });
   } catch (error) {
@@ -173,33 +174,33 @@ router.get('/reset-password', (req, res, next) => {
 
 router.post('/reset-password', ResetPasswordValidator, async (req, res, next) => {
   try {
-    var result = validationResult(req);
-    var { email } = req.body;
+    const result = validationResult(req);
+    const { email } = req.body;
 
     req.flash('email', email);
 
     if (result.errors.length !== 0) {
       result = result.mapped();
       for (fields in result) {
-        req.flash('error', result[fields].msg);
+        req.flash('errors', result[fields].msg);
         return res.redirect('/auth/reset-password');
       }
     }
 
-    var user = await UserModel.findOne({ email }).exec();
+    const user = await UserModel.findOne({ email });
 
     if (!user) {
       req.flash('error', 'Đỉa chỉ email không tồn tại!');
       return res.redirect('/auth/reset-password');
     }
 
-    var password = Math.random().toString(36).slice(-6);
-    password = password.charAt(0).toUpperCase() + password.slice(1) + '1@';
-    var hashed = await argon2.hash(password);
+    let password = crypto.randomBytes(8).toString('base64').slice(0, 10);
+    password = password.replace(/[^a-zA-Z0-9]/g, '') + 'A1!';
+    const hashed = await argon2.hash(password);
 
-    const updatedUser = await UserModel.findByIdAndUpdate(user.id, { password: hashed }).exec();
+    const updatedUser = await UserModel.findByIdAndUpdate(user.id, { password: hashed });
     if (!updatedUser) {
-      req.flash('error', 'Lỗi trong quá trình xử lý, không tìm thấy người dùng để cập nhật!');
+      req.flash('errors', 'Lỗi trong quá trình xử lý, không tìm thấy người dùng để cập nhật!');
       return res.redirect('/auth/reset-password');
     }
 
@@ -215,16 +216,15 @@ router.post('/reset-password', ResetPasswordValidator, async (req, res, next) =>
     transporter.sendMail({
       from: process.env.mailUser,
       to: `${email}`,
-      subject: '[TB] THÔNG TIN TÀI KHOẢN KHÁCH HÀNG - BỆNH VIỆN XXXXXX',
+      subject: '[TB] THÔNG TIN TÀI KHOẢN NGƯỜI DÙNG - BỆNH VIỆN XXXXXX',
       html: `<p>Vui lòng không chia sẻ thông tin này đến bất kỳ ai. 
       Đây là thông tin tài khoản của bạn sau khi đặt lại mật khẩu:</p>
-      <b>Tên khách hàng: </b>${user.fullname} <br> 
+      <b>Tên người dùng: </b>${user.fullname} <br> 
       <b>Địa chỉ email: </b>${user.email} <br> 
       <b>Mật khẩu mới: </b>${password} 
       <p>Trân trọng ./.</p>`,
     });
 
-    console.log("debug 5");
 
     req.flash('success', 1);
     return res.redirect('/auth/email');

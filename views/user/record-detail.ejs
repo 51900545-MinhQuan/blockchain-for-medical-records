@@ -1,0 +1,126 @@
+<%- include('./partials/header') %>
+
+<style>
+    .record-detail-card .info-label {
+        font-weight: bold;
+    }
+    .medication-table th, .medication-table td {
+        vertical-align: middle;
+    }
+</style>
+
+<div class="pcoded-main-container">
+    <div class="pcoded-content">
+        <!-- [ breadcrumb ] start -->
+        <div class="page-header">
+            <div class="page-block">
+                <div class="row align-items-center">
+                    <div class="col-md-12">
+                        <div class="page-header-title">
+                            <h5 class="m-b-10">Chi tiết Bệnh án: <%= record.recordCode %></h5>
+                        </div>
+                        <ul class="breadcrumb">
+                            <li class="breadcrumb-item"><a href="/"><i class="feather icon-home"></i></a></li>
+                            <li class="breadcrumb-item"><a href="/medical-history">Hồ sơ bệnh án của tôi</a></li>
+                            <li class="breadcrumb-item"><a>Chi tiết bệnh án</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- [ breadcrumb ] end -->
+
+        <div class="row">
+            <div class="col-sm-12">
+                <div class="card record-detail-card">
+                    <div class="card-header">
+                        <h5>Thông tin chung</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <p><span class="info-label">Mã Bệnh án:</span> <%= record.recordCode %></p>
+                                <p><span class="info-label">Bệnh nhân:</span> <%= record.patientID.fullname %> (<%= record.patientID.patientCode %>)</p>
+                                <p><span class="info-label">Bác sĩ:</span> <%= record.doctorID.fullname %></p>
+                            </div>
+                            <div class="col-md-6">
+                                <p><span class="info-label">Ngày khám:</span> <%= record.visitDate.toLocaleString('vi-VN') %></p>
+                                <p><span class="info-label">Lý do khám:</span> <%= record.reasonForVisit %></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h5>Thông tin lâm sàng</h5>
+                    </div>
+                    <div class="card-body">
+                        <p><span class="info-label">Triệu chứng:</span> <%= record.symptoms && record.symptoms.length ? record.symptoms.join(', ') : 'Không có' %></p>
+                        <p><span class="info-label">Chẩn đoán:</span> <%= record.diagnosis %></p>
+                        <p><span class="info-label">Ghi chú của bác sĩ:</span> <%= record.notes || 'Không có' %></p>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h5>Thông tin y tế cơ bản</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-4"><span class="info-label">Chiều cao:</span> <%= record.vitalSigns.height || 'N/A' %> cm</div>
+                            <div class="col-md-4"><span class="info-label">Cân nặng:</span> <%= record.vitalSigns.weight || 'N/A' %> kg</div>
+                            <div class="col-md-4"><span class="info-label">Nhiệt độ:</span> <%= record.vitalSigns.temperature || 'N/A' %> °C</div>
+                            <div class="col-md-4"><span class="info-label">Huyết áp:</span> <%= record.vitalSigns.bloodPressure || 'N/A' %> mmHg</div>
+                            <div class="col-md-4"><span class="info-label">Mạch:</span> <%= record.vitalSigns.pulse || 'N/A' %> bpm</div>
+                        </div>
+                    </div>
+                </div>
+
+                <% if (record.prescribedMedications && record.prescribedMedications.length > 0) { %>
+                <div class="card">
+                    <div class="card-header">
+                        <h5>Thuốc được kê đơn</h5>
+                    </div>
+                    <div class="card-body table-responsive">
+                        <table class="table table-bordered medication-table">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Tên thuốc</th>
+                                    <th>Liều lượng</th>
+                                    <th>Tần suất</th>
+                                    <th>Thời gian dùng</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <% record.prescribedMedications.forEach(med => { %>
+                                <tr>
+                                    <td><%= med.name %></td>
+                                    <td><%= med.dosage %></td>
+                                    <td><%= med.frequency %></td>
+                                    <td><%= med.duration %></td>
+                                </tr>
+                                <% }) %>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <% } %>
+
+                <% if (record.followUpDate) { %>
+                <div class="card">
+                    <div class="card-header">
+                        <h5>Tái khám</h5>
+                    </div>
+                    <div class="card-body">
+                        <p><span class="info-label">Ngày tái khám:</span> <%= record.followUpDate.toLocaleDateString('vi-VN') %></p>
+                        <p><span class="info-label">Ghi chú tái khám:</span> <%= record.followUpNote || 'Không có' %></p>
+                    </div>
+                </div>
+                <% } %>
+            </div>
+        </div>
+    </div>
+</div>
+
+<%- include('./partials/footer') %>

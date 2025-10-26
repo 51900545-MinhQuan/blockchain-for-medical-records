@@ -1,4 +1,4 @@
-const { check, validationResult } = require('express-validator');
+const { check } = require('express-validator');
 
 module.exports = [
   check('fullname')
@@ -24,7 +24,23 @@ module.exports = [
     .notEmpty().withMessage('Vui lòng nhập xác nhận mật khẩu'),
   check('birthday')
     .exists().withMessage('Chưa có ngày sinh, ngày sinh cần được gửi với key là birthday')
-    .notEmpty().withMessage('Vui lòng nhập ngày sinh'),
+    .notEmpty().withMessage('Vui lòng nhập ngày sinh')
+    .isISO8601().withMessage('Ngày sinh không hợp lệ (định dạng yyyy-mm-dd)')
+    .custom((value) => {
+      const birthday = new Date(value);
+      const now = new Date();
+      const minDate = new Date();
+      minDate.setFullYear(now.getFullYear() - 150);
+
+      if (birthday > now) {
+        throw new Error('Ngày sinh không thể sau ngày hiện tại');
+      }
+      if (birthday < minDate) {
+        throw new Error('Ngày sinh không hợp lệ');
+      }
+
+      return true;
+    }),
   check('phone')
     .exists().withMessage('Chưa có số điện thoại, số điện thoại cần được gửi với key là phone')
     .notEmpty().withMessage('Vui lòng nhập số điện thoại')
@@ -33,4 +49,9 @@ module.exports = [
   check('address')
     .exists().withMessage('Chưa có địa chỉ hiện tại, địa chỉ hiện tại cần được gửi với key là address')
     .notEmpty().withMessage('Vui lòng nhập địa chỉ hiện tại'),
+  check('identificationNumber')
+    .optional({ checkFalsy: true })
+    .isNumeric().withMessage('CMND/CCCD phải là số.')
+    .custom(value => (value.length === 9 || value.length === 12))
+    .withMessage('CMND/CCCD phải có 9 hoặc 12 chữ số.'),
 ]
