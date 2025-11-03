@@ -50,22 +50,18 @@
                 </p>
                 <p>
                   <span class="info-label">Bệnh nhân:</span> <%=
-                  record.patientID.fullname %> (<%= record.patientID.patientCode
-                  %>)
+                  record.patientID.fullname %> (<%= record.patientID.patientCode%>)
                 </p>
                 <p>
-                  <span class="info-label">Bác sĩ:</span> <%=
-                  record.doctorID.fullname %>
+                  <span class="info-label">Bác sĩ:</span> <%=record.doctorID.fullname %>
                 </p>
               </div>
               <div class="col-md-6">
                 <p>
-                  <span class="info-label">Ngày khám:</span> <%=
-                  record.visitDate.toLocaleString('vi-VN') %>
+                  <span class="info-label">Ngày khám:</span> <%=record.visitDate.toLocaleString('vi-VN') %>
                 </p>
                 <p>
-                  <span class="info-label">Lý do khám:</span> <%=
-                  record.reasonForVisit %>
+                  <span class="info-label">Lý do khám:</span> <%=record.reasonForVisit %>
                 </p>
               </div>
             </div>
@@ -78,16 +74,13 @@
           </div>
           <div class="card-body">
             <p>
-              <span class="info-label">Triệu chứng:</span> <%= record.symptoms
-              && record.symptoms.length ? record.symptoms.join(', ') : 'Không
-              có' %>
+              <span class="info-label">Triệu chứng:</span> <%= record.symptoms && record.symptoms.length ? record.symptoms.join(', ') : 'Không có' %>
             </p>
             <p>
               <span class="info-label">Chẩn đoán:</span> <%= record.diagnosis %>
             </p>
             <p>
-              <span class="info-label">Ghi chú của bác sĩ:</span> <%=
-              record.notes || 'Không có' %>
+              <span class="info-label">Ghi chú của bác sĩ:</span> <%= record.notes || 'Không có' %>
             </p>
           </div>
         </div>
@@ -99,31 +92,25 @@
           <div class="card-body">
             <div class="row">
               <div class="col-md-4">
-                <span class="info-label">Chiều cao:</span> <%=
-                record.vitalSigns.height || 'N/A' %> cm
+                <span class="info-label">Chiều cao:</span> <%= record.vitalSigns.height || 'N/A' %> cm
               </div>
               <div class="col-md-4">
-                <span class="info-label">Cân nặng:</span> <%=
-                record.vitalSigns.weight || 'N/A' %> kg
+                <span class="info-label">Cân nặng:</span> <%= record.vitalSigns.weight || 'N/A' %> kg
               </div>
               <div class="col-md-4">
-                <span class="info-label">Nhiệt độ:</span> <%=
-                record.vitalSigns.temperature || 'N/A' %> °C
+                <span class="info-label">Nhiệt độ:</span> <%= record.vitalSigns.temperature || 'N/A' %> °C
               </div>
               <div class="col-md-4">
-                <span class="info-label">Huyết áp:</span> <%=
-                record.vitalSigns.bloodPressure || 'N/A' %> mmHg
+                <span class="info-label">Huyết áp:</span> <%= record.vitalSigns.bloodPressure || 'N/A' %> mmHg
               </div>
               <div class="col-md-4">
-                <span class="info-label">Mạch:</span> <%=
-                record.vitalSigns.pulse || 'N/A' %> bpm
+                <span class="info-label">Mạch:</span> <%= record.vitalSigns.pulse || 'N/A' %> bpm
               </div>
             </div>
           </div>
         </div>
 
-        <% if (record.prescribedMedications &&
-        record.prescribedMedications.length > 0) { %>
+        <% if (record.prescribedMedications && record.prescribedMedications.length > 0) { %>
         <div class="card">
           <div class="card-header">
             <h5>Thuốc được kê đơn</h5>
@@ -158,12 +145,10 @@
           </div>
           <div class="card-body">
             <p>
-              <span class="info-label">Ngày tái khám:</span> <%=
-              record.followUpDate.toLocaleDateString('vi-VN') %>
+              <span class="info-label">Ngày tái khám:</span> <%= record.followUpDate.toLocaleDateString('vi-VN') %>
             </p>
             <p>
-              <span class="info-label">Ghi chú tái khám:</span> <%=
-              record.followUpNote || 'Không có' %>
+              <span class="info-label">Ghi chú tái khám:</span> <%= record.followUpNote || 'Không có' %>
             </p>
           </div>
         </div>
