@@ -8,11 +8,11 @@
 <!-- prism Js -->
 <script src="/bootstrap/js/plugins/prism.js"></script>
 <% if(errors.length> 0) {%>
-    <script> toastr.warning("<%= errors %>");</script>
+<script>
+  toastr.warning("<%= errors %>");
+</script>
+<% }%> <% if(success.length> 0) {%>
+<script>
+  toastr.success("<%= success %>");
+</script>
 <% }%>
-<% if(success.length> 0) {%>
-    <script> toastr.success("<%= success %>");</script>
-<% }%>
-</body>
-
-</html>

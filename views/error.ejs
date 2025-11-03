@@ -1,35 +1,35 @@
 <!DOCTYPE html>
 <html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, shrink-to-fit=no"
+    />
+    <title>Lỗi</title>
+    <link
+      rel="stylesheet"
+      href="/assets/vendors/iconfonts/mdi/css/materialdesignicons.css"
+    />
+    <link rel="stylesheet" href="/assets/vendors/css/vendor.addons.css" />
+    <link rel="stylesheet" href="/assets/css/shared/style.css" />
+    <link rel="stylesheet" href="/assets/css/demo_1/style.css" />
+    <link rel="shortcut icon" href="/assets/images/logo_mini.png" />
+  </head>
 
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-  <title>Lỗi</title>
-  <link rel="stylesheet" href="/assets/vendors/iconfonts/mdi/css/materialdesignicons.css">
-  <link rel="stylesheet" href="/assets/vendors/css/vendor.addons.css">
-  <link rel="stylesheet" href="/assets/css/shared/style.css">
-  <link rel="stylesheet" href="/assets/css/demo_1/style.css">
-  <link rel="shortcut icon" href="/assets/images/logo_mini.png" />
-</head>
-
-<body>
-  <div class="error_page error_2">
-    <div class="container inner-wrapper">
-      <h1 class="display-1 error-heading">
-        <%= error.status %>
-      </h1>
-      <h2 class="error-code">
-        <%= message %>
-      </h2>
-      <p class="error-message m-5" style="max-width: 1500px;">
-        <%= error.stack %>
-      </p>
-      <a href="/" class="btn btn-primary mt-1">Quay lại trang chủ</a>
+  <body>
+    <div class="error_page error_2">
+      <div class="container inner-wrapper">
+        <h1 class="display-1 error-heading"><%= error.status %></h1>
+        <h2 class="error-code"><%= message %></h2>
+        <p class="error-message m-5" style="max-width: 1500px">
+          <%= error.stack %>
+        </p>
+        <a href="/" class="btn btn-primary mt-1">Quay lại trang chủ</a>
+      </div>
     </div>
-  </div>
-  <script src="/assets/vendors/js/core.js"></script>
-  <script src="/assets/vendors/js/vendor.addons.js"></script>
-  <script src="/assets/js/template.js"></script>
-</body>
-
+    <script src="/assets/vendors/js/core.js"></script>
+    <script src="/assets/vendors/js/vendor.addons.js"></script>
+    <script src="/assets/js/template.js"></script>
+  </body>
 </html>

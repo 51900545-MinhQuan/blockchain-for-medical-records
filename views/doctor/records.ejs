@@ -10,7 +10,9 @@
               <h5 class="m-b-10">Danh sách Bệnh án</h5>
             </div>
             <ul class="breadcrumb">
-              <li class="breadcrumb-item"><a href="/doctor"><i class="feather icon-home"></i></a></li>
+              <li class="breadcrumb-item">
+                <a href="/doctor"><i class="feather icon-home"></i></a>
+              </li>
               <li class="breadcrumb-item"><a>Hồ sơ bệnh án</a></li>
               <li class="breadcrumb-item"><a>Danh sách bệnh án</a></li>
             </ul>
@@ -27,10 +29,20 @@
             <form action="/doctor/records" method="GET" class="form-inline">
               <div class="form-group mb-2">
                 <label for="filterDate" class="mr-2">Chọn ngày:</label>
-                <input type="date" class="form-control" id="filterDate" name="filterDate" value="<%= filterDate || '' %>">
+                <input
+                  type="date"
+                  class="form-control"
+                  id="filterDate"
+                  name="filterDate"
+                  value="<%= filterDate || '' %>"
+                />
               </div>
-              <button type="submit" class="btn btn-primary mb-2 ml-2">Lọc</button>
-              <a href="/doctor/records" class="btn btn-secondary mb-2 ml-2">Xóa lọc</a>
+              <button type="submit" class="btn btn-primary mb-2 ml-2">
+                Lọc
+              </button>
+              <a href="/doctor/records" class="btn btn-secondary mb-2 ml-2"
+                >Xóa lọc</a
+              >
             </form>
           </div>
         </div>
@@ -40,60 +52,86 @@
     <div class="row">
       <div class="col-sm-12">
         <% if (!records || records.length === 0) { %>
-          <div class="card">
-            <div class="card-body text-center">
-              <p>Không có bệnh án trong ngày này</p>
-            </div>
+        <div class="card">
+          <div class="card-body text-center">
+            <p>Không có bệnh án trong ngày này</p>
           </div>
+        </div>
         <% } else { %>
-          <div class="card">
-            <div class="card-header">
-              <h5><i class="feather icon-calendar mr-2"></i>Ngày khám: <%= currentDate %></h5>
-            </div>
-            <div class="card-body table-responsive">
-              <table class="table table-hover table-bordered">
-                <thead class="table-light">
-                  <tr>
-                    <th>Mã Bệnh Án</th>
-                    <th>Bệnh Nhân</th>
-                    <th>Bác sĩ</th>
-                    <th>Chẩn đoán</th>
-                    <th class="text-center">Hành động</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <% records.forEach(record => { %>
-                    <tr>
-                      <td><%= record.recordCode %></td>
-                      <td><a href="/doctor/patient/<%= record.patientID._id %>"><%= record.patientID.fullname %> (<%= record.patientID.patientCode %>)</a></td>
-                      <td><%= record.doctorID.fullname %></td>
-                      <td><%= record.diagnosis || 'Chưa có chẩn đoán' %></td>
-                      <td class="text-center">
-                        <a href="/doctor/medical-record/<%= record._id %>" class="btn btn-sm btn-info">Xem chi tiết</a>
-                      </td>
-                    </tr>
-                  <% }) %>
-                </tbody>
-              </table>
-            </div>
-            <% if (totalPages > 1) { %>
-              <div class="card-footer">
-                <nav aria-label="Page navigation">
-                  <ul class="pagination justify-content-center">
-                    <li class="page-item <%= currentPage === 1 ? 'disabled' : '' %>">
-                      <a class="page-link" href="/doctor/records?page=<%= currentPage - 1 %>&filterDate=<%= filterDate || '' %>">Trước</a>
-                    </li>
-                    <li class="page-item disabled">
-                      <span class="page-link">Trang <%= currentPage %> / <%= totalPages %></span>
-                    </li>
-                    <li class="page-item <%= currentPage === totalPages ? 'disabled' : '' %>">
-                      <a class="page-link" href="/doctor/records?page=<%= currentPage + 1 %>&filterDate=<%= filterDate || '' %>">Sau</a>
-                    </li>
-                  </ul>
-                </nav>
-              </div>
-            <% } %>
+        <div class="card">
+          <div class="card-header">
+            <h5>
+              <i class="feather icon-calendar mr-2"></i>Ngày khám: <%=
+              currentDate %>
+            </h5>
           </div>
+          <div class="card-body table-responsive">
+            <table class="table table-hover table-bordered">
+              <thead class="table-light">
+                <tr>
+                  <th>Mã Bệnh Án</th>
+                  <th>Bệnh Nhân</th>
+                  <th>Bác sĩ</th>
+                  <th>Chẩn đoán</th>
+                  <th class="text-center">Hành động</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% records.forEach(record => { %>
+                <tr>
+                  <td><%= record.recordCode %></td>
+                  <td>
+                    <a href="/doctor/patient/<%= record.patientID._id %>"
+                      ><%= record.patientID.fullname %> (<%=
+                      record.patientID.patientCode %>)</a
+                    >
+                  </td>
+                  <td><%= record.doctorID.fullname %></td>
+                  <td><%= record.diagnosis || 'Chưa có chẩn đoán' %></td>
+                  <td class="text-center">
+                    <a
+                      href="/doctor/medical-record/<%= record._id %>"
+                      class="btn btn-sm btn-info"
+                      >Xem chi tiết</a
+                    >
+                  </td>
+                </tr>
+                <% }) %>
+              </tbody>
+            </table>
+          </div>
+          <% if (totalPages > 1) { %>
+          <div class="card-footer">
+            <nav aria-label="Page navigation">
+              <ul class="pagination justify-content-center">
+                <li
+                  class="page-item <%= currentPage === 1 ? 'disabled' : '' %>"
+                >
+                  <a
+                    class="page-link"
+                    href="/doctor/records?page=<%= currentPage - 1 %>&filterDate=<%= filterDate || '' %>"
+                    >Trước</a
+                  >
+                </li>
+                <li class="page-item disabled">
+                  <span class="page-link"
+                    >Trang <%= currentPage %> / <%= totalPages %></span
+                  >
+                </li>
+                <li
+                  class="page-item <%= currentPage === totalPages ? 'disabled' : '' %>"
+                >
+                  <a
+                    class="page-link"
+                    href="/doctor/records?page=<%= currentPage + 1 %>&filterDate=<%= filterDate || '' %>"
+                    >Sau</a
+                  >
+                </li>
+              </ul>
+            </nav>
+          </div>
+          <% } %>
+        </div>
         <% } %>
       </div>
     </div>

@@ -2,11 +2,12 @@
 <script src="/bootstrap/js/vendor-all.min.js"></script>
 <script src="/bootstrap/js/plugins/bootstrap.min.js"></script>
 <script src="/bootstrap/js/pcoded.min.js"></script>
-<% if(error.length> 0) {%>
-    <script> toastr.warning("<%= error %>");</script>
+<% if(errors.length> 0) {%>
+<script>
+  toastr.warning("<%= errors %>");
+</script>
+<% }%> <% if(success.length> 0) {%>
+<script>
+  toastr.success("<%= success %>");
+</script>
 <% }%>
-<% if(success.length> 0) {%>
-    <script> toastr.success("<%= success %>");</script>
-<% }%>
-</body>
-</html>

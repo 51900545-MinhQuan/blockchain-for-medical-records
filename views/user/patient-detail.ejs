@@ -27,11 +27,17 @@
         <div class="row align-items-center">
           <div class="col-md-12">
             <div class="page-header-title">
-              <h5 class="m-b-10">Hồ sơ bệnh án của tôi (<%= patient.patientCode %>)</h5>
+              <h5 class="m-b-10">
+                Hồ sơ bệnh án của tôi (<%= patient.patientCode %>)
+              </h5>
             </div>
             <ul class="breadcrumb">
-              <li class="breadcrumb-item"><a href="/"><i class="feather icon-home"></i></a></li>
-              <li class="breadcrumb-item"><a href="/medical-history">Hồ sơ bệnh án của tôi</a></li>
+              <li class="breadcrumb-item">
+                <a href="/"><i class="feather icon-home"></i></a>
+              </li>
+              <li class="breadcrumb-item">
+                <a href="/medical-history">Hồ sơ bệnh án của tôi</a>
+              </li>
             </ul>
           </div>
         </div>
@@ -44,38 +50,106 @@
         <div class="card patient-info-card">
           <div class="card-header">
             <div class="d-flex justify-content-between align-items-center">
-                <h5><i class="feather icon-user mr-2"></i>Thông tin cá nhân</h5>
-                <a href="/medical-history/edit" class="btn btn-sm btn-primary">Chỉnh sửa thông tin</a>
+              <h5><i class="feather icon-user mr-2"></i>Thông tin cá nhân</h5>
+              <a href="/medical-history/edit" class="btn btn-sm btn-primary"
+                >Chỉnh sửa thông tin</a
+              >
             </div>
           </div>
           <div class="card-body">
             <div class="row">
               <div class="col-md-6">
-                <p><span class="info-label">Họ tên:</span> <span class="info-value"><%= patient.fullname %></span></p>
-                <p><span class="info-label">Mã bệnh nhân:</span> <span class="info-value"><%= patient.patientCode %></span></p>
-                <p><span class="info-label">Giới tính:</span> <span class="info-value"><%= patient.gender %></span></p>
-                <p><span class="info-label">Ngày sinh:</span> <span class="info-value"><%= patient.birthday ? patient.birthday.toLocaleDateString('vi-VN') : 'Không có' %></span></p>
-                <p><span class="info-label">Email:</span> <span class="info-value"><%= patient.email || 'Không có' %></span></p>
-                <p><span class="info-label">Số điện thoại:</span> <span class="info-value"><%= patient.phone || 'Không có' %></span></p>
+                <p>
+                  <span class="info-label">Họ tên:</span>
+                  <span class="info-value"><%= patient.fullname %></span>
+                </p>
+                <p>
+                  <span class="info-label">Mã bệnh nhân:</span>
+                  <span class="info-value"><%= patient.patientCode %></span>
+                </p>
+                <p>
+                  <span class="info-label">Giới tính:</span>
+                  <span class="info-value"><%= patient.gender %></span>
+                </p>
+                <p>
+                  <span class="info-label">Ngày sinh:</span>
+                  <span class="info-value"
+                    ><%= patient.birthday ?
+                    patient.birthday.toLocaleDateString('vi-VN') : 'Không có'
+                    %></span
+                  >
+                </p>
+                <p>
+                  <span class="info-label">Email:</span>
+                  <span class="info-value"
+                    ><%= patient.email || 'Không có' %></span
+                  >
+                </p>
+                <p>
+                  <span class="info-label">Số điện thoại:</span>
+                  <span class="info-value"
+                    ><%= patient.phone || 'Không có' %></span
+                  >
+                </p>
               </div>
               <div class="col-md-6">
-                <p><span class="info-label">Địa chỉ:</span> <span class="info-value"><%= patient.address || 'Không có' %></span></p>
-                <p><span class="info-label">CMND/CCCD:</span> <span class="info-value"><%= patient.identificationNumber || 'Không có' %></span></p>
-                <p><span class="info-label">Nhóm máu:</span> <span class="info-value"><%= patient.bloodType || 'Không có' %></span></p>
-                <p><span class="info-label">Dị ứng:</span> <span class="info-value"><%= patient.allergies || 'Không có' %></span></p>
-                <p><span class="info-label">Bệnh mãn tính:</span> <span class="info-value"><%= patient.chronicDiseases || 'Không có' %></span></p>
+                <p>
+                  <span class="info-label">Địa chỉ:</span>
+                  <span class="info-value"
+                    ><%= patient.address || 'Không có' %></span
+                  >
+                </p>
+                <p>
+                  <span class="info-label">CMND/CCCD:</span>
+                  <span class="info-value"
+                    ><%= patient.identificationNumber || 'Không có' %></span
+                  >
+                </p>
+                <p>
+                  <span class="info-label">Nhóm máu:</span>
+                  <span class="info-value"
+                    ><%= patient.bloodType || 'Không có' %></span
+                  >
+                </p>
+                <p>
+                  <span class="info-label">Dị ứng:</span>
+                  <span class="info-value"
+                    ><%= patient.allergies || 'Không có' %></span
+                  >
+                </p>
+                <p>
+                  <span class="info-label">Bệnh mãn tính:</span>
+                  <span class="info-value"
+                    ><%= patient.chronicDiseases || 'Không có' %></span
+                  >
+                </p>
               </div>
             </div>
-            <hr>
+            <hr />
             <h6>Thông tin người giám hộ</h6>
             <div class="row">
-                <div class="col-md-6">
-                    <p><span class="info-label">Họ tên:</span> <span class="info-value"><%= patient.guardianName || 'Không có' %></span></p>
-                    <p><span class="info-label">Số điện thoại:</span> <span class="info-value"><%= patient.guardianPhone || 'Không có' %></span></p>
-                </div>
-                <div class="col-md-6">
-                    <p><span class="info-label">CMND/CCCD:</span> <span class="info-value"><%= patient.guardianIDNumber || 'Không có' %></span></p>
-                </div>
+              <div class="col-md-6">
+                <p>
+                  <span class="info-label">Họ tên:</span>
+                  <span class="info-value"
+                    ><%= patient.guardianName || 'Không có' %></span
+                  >
+                </p>
+                <p>
+                  <span class="info-label">Số điện thoại:</span>
+                  <span class="info-value"
+                    ><%= patient.guardianPhone || 'Không có' %></span
+                  >
+                </p>
+              </div>
+              <div class="col-md-6">
+                <p>
+                  <span class="info-label">CMND/CCCD:</span>
+                  <span class="info-value"
+                    ><%= patient.guardianIDNumber || 'Không có' %></span
+                  >
+                </p>
+              </div>
             </div>
           </div>
         </div>
@@ -91,7 +165,9 @@
           </div>
           <div class="card-body">
             <div class="table-responsive">
-              <table class="table table-striped table-bordered align-middle table-black-bordered">
+              <table
+                class="table table-striped table-bordered align-middle table-black-bordered"
+              >
                 <thead class="table-dark">
                   <tr>
                     <th>Mã Bệnh Án</th>
@@ -104,21 +180,25 @@
                 <tbody>
                   <% if (medicalRecords.length === 0) { %>
                   <tr>
-                    <td colspan="5" class="text-center">Chưa có bệnh án nào.</td>
+                    <td colspan="5" class="text-center">
+                      Chưa có bệnh án nào.
+                    </td>
                   </tr>
-                  <% } else { %>
-                    <% medicalRecords.forEach(record => { %>
-                    <tr>
-                      <td><%= record.recordCode || 'Không có' %></td>
-                      <td><%= record.visitDate.toLocaleDateString('vi-VN') %></td>
-                      <td><%= record.doctorID.fullname %></td>
-                      <td><%= record.diagnosis || 'Chưa có chẩn đoán' %></td>
-                      <td>
-                        <a href="/medical-record/<%= record._id %>" class="btn btn-sm btn-info">Xem chi tiết</a>
-                      </td>
-                    </tr>
-                    <% }) %>
-                  <% } %>
+                  <% } else { %> <% medicalRecords.forEach(record => { %>
+                  <tr>
+                    <td><%= record.recordCode || 'Không có' %></td>
+                    <td><%= record.visitDate.toLocaleDateString('vi-VN') %></td>
+                    <td><%= record.doctorID.fullname %></td>
+                    <td><%= record.diagnosis || 'Chưa có chẩn đoán' %></td>
+                    <td>
+                      <a
+                        href="/medical-record/<%= record._id %>"
+                        class="btn btn-sm btn-info"
+                        >Xem chi tiết</a
+                      >
+                    </td>
+                  </tr>
+                  <% }) %> <% } %>
                 </tbody>
               </table>
             </div>
@@ -126,7 +206,6 @@
         </div>
       </div>
     </div>
-
   </div>
 </div>
 
