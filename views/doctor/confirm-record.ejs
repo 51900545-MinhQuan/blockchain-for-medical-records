@@ -1,0 +1,177 @@
+<%- include('./partials/header') %>
+
+<div class="pcoded-main-container">
+  <div class="pcoded-content">
+    <div class="page-header">
+      <div class="page-block">
+        <div class="row align-items-center">
+          <div class="col-md-12">
+            <div class="page-header-title">
+              <h5 class="m-b-10">Xác nhận Bệnh án</h5>
+            </div>
+            <ul class="breadcrumb">
+              <li class="breadcrumb-item">
+                <a href="/doctor"><i class="feather icon-home"></i></a>
+              </li>
+              <li class="breadcrumb-item"><a href="/doctor/records">Danh sách bệnh án</a></li>
+              <li class="breadcrumb-item"><a>Xác nhận bệnh án</a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="col-sm-12">
+        <div class="card">
+          <div class="card-header">
+            <h5><i class="feather icon-check-circle mr-2"></i>Xác nhận và Ghi lên Blockchain</h5>
+          </div>
+          <div class="card-body">
+            <% if (success && success.length > 0) { %>
+              <div class="alert alert-success" role="alert">
+                <%= success %>
+              </div>
+            <% } %>
+            <% if (type === 'create') { %>
+              <p>Bệnh án <strong><%= record.recordCode %></strong> cho bệnh nhân <strong><%= patient.fullname %> (<%= patient.patientCode %>)</strong> đã được tạo thành công trong hệ thống.</p>
+              <p>Vui lòng nhấn nút bên dưới để xác nhận và ghi một bản ghi của bệnh án này lên blockchain.</p>
+            <% } else if (type === 'edit') { %>
+              <p>Bệnh án <strong><%= record.recordCode %></strong> cho bệnh nhân <strong><%= patient.fullname %> (<%= patient.patientCode %>)</strong> đã được cập nhật thành công trong hệ thống.</p>
+              <p>Vui lòng nhấn nút bên dưới để xác nhận và ghi lại lịch sử chỉnh sửa của bệnh án này lên blockchain.</p>
+            <% } else { %>
+              <p>Vui lòng xác nhận để ghi bệnh án lên blockchain.</p>
+            <% } %>
+            <hr>
+            <div class="text-center">
+              <button 
+                id="confirm-blockchain-btn" 
+                class="btn btn-primary"
+                data-record-id="<%= record._id %>"
+                data-record-code="<%= record.recordCode %>"
+                data-patient-code="<%= patient.patientCode %>"
+                data-record-hash="<%= record.recordHash %>"
+                data-type="<%= type %>"
+              >
+              Xác nhận và Ghi
+              </button>
+              <a href="/doctor/patient/<%= patient._id %>" class="btn btn-secondary">Để sau</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.15.0/ethers.umd.min.js"></script>
+<script>
+    const CONTRACT_ADDR = "<%= process.env.CONTRACT_ADDR %>";
+    const POLYGON_CHAIN_ID = "<%= process.env.POLYGON_CHAIN_ID %>";
+    const RPC_URL = "<%= process.env.RPC_URL %>";
+</script>
+<script src="/assets/js/blockchain-client.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const confirmBtn = document.getElementById('confirm-blockchain-btn');
+
+    if (confirmBtn) {
+      confirmBtn.addEventListener('click', () => {
+        const { recordId, recordCode, patientCode, recordHash, type } = confirmBtn.dataset;
+
+        confirmBtn.disabled = true;
+        confirmBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Đang xử lý...';
+
+        if (type === 'create') {
+          addRecordToBlockchain(recordId, recordCode, patientCode, recordHash);
+        } else if (type === 'edit') {
+          updateRecordOnBlockchain(recordId, recordCode, patientCode, recordHash);
+        }
+
+      });
+    }
+  });
+
+  async function addRecordToBlockchain(recordId, recordCode, patientCode, recordHash) {
+    const confirmBtn = document.getElementById('confirm-blockchain-btn');
+
+    if (!recordId || !recordCode || !patientCode || !recordHash) {
+      toastr.error("Thiếu thông tin bệnh án để cập nhật lên blockchain.");
+      if (confirmBtn) {
+        confirmBtn.disabled = false;
+        confirmBtn.innerHTML = 'Xác nhận và Ghi';
+      }
+      return;
+    }
+
+    try {
+      const success = await addRecordByDoctor(recordId, recordCode, patientCode, recordHash);
+
+      if (success) {
+        toastr.success("Bệnh án đã được ghi vào blockchain thành công!");
+        setTimeout(() => {
+          window.location.href = `/doctor/patient/<%= patient._id %>`;
+        }, 2000);
+      } else {
+        toastr.error(
+          "Giao dịch blockchain đã bị hủy hoặc thất bại. Bệnh án đã được lưu nhưng chưa có trên blockchain."
+        );
+        if (confirmBtn) {
+          confirmBtn.disabled = false;
+          confirmBtn.innerHTML = '<i class="feather icon-share-2 mr-2"></i>Xác nhận và Ghi';
+        }
+      }
+    } catch (error) {
+      console.error("Lỗi tương tác blockchain:", error);
+      toastr.error("Đã xảy ra lỗi khi tương tác với blockchain.");
+      if (confirmBtn) {
+        confirmBtn.disabled = false;
+        confirmBtn.innerHTML = '<i class="feather icon-share-2 mr-2"></i>Xác nhận và Ghi';
+      }
+    }
+  }
+
+  async function updateRecordOnBlockchain(recordId, recordCode, patientCode, recordHash) {
+    const confirmBtn = document.getElementById('confirm-blockchain-btn');
+
+    if (!recordId || !recordCode || !patientCode || !recordHash) {
+      toastr.error("Thiếu thông tin bệnh án để cập nhật lên blockchain.");
+      if (confirmBtn) {
+        confirmBtn.disabled = false;
+        confirmBtn.innerHTML = 'Xác nhận và Ghi';
+      }
+      return;
+    }
+
+    try {
+      const success = await updateRecordByDoctor(recordId, recordCode, patientCode, recordHash);
+
+      if (success) {
+        toastr.success("Bệnh án đã được cập nhật trên blockchain thành công!");
+        setTimeout(() => {
+          window.location.href = `/doctor/patient/<%= patient._id %>`;
+        }, 2000);
+      } else {
+        toastr.error(
+          "Giao dịch blockchain đã bị hủy hoặc thất bại. Thay đổi đã được lưu nhưng chưa được ghi lên blockchain."
+        );
+        if (confirmBtn) {
+          confirmBtn.disabled = false;
+          confirmBtn.innerHTML = '<i class="feather icon-share-2 mr-2"></i>Xác nhận và Ghi';
+        }
+      }
+    } catch (error) {
+      console.error("Lỗi tương tác blockchain:", error);
+      toastr.error("Đã xảy ra lỗi khi tương tác với blockchain.");
+      if (confirmBtn) {
+        confirmBtn.disabled = false;
+        confirmBtn.innerHTML = '<i class="feather icon-share-2 mr-2"></i>Xác nhận và Ghi';
+      }
+    }
+  }
+
+</script>
+
+
+<%- include('./partials/footer') %>

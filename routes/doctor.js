@@ -1,11 +1,18 @@
 const express = require("express");
 const { validationResult } = require("express-validator");
 const argon2 = require("argon2");
+const { requireWallet } = require("../middleware/permission");
 const router = express.Router();
 const moment = require("moment");
+const { ethers } = require("ethers");
+const {
+  assignDoctor,
+  checkRecordAccess,
+} = require("../blockchain/services/blockchain-admin.js");
 
 // Import Models
 const UserModel = require("../models/user");
+const DoctorModel = require("../models/doctor");
 const PatientModel = require("../models/patient");
 const MedicalRecordModel = require("../models/medical-record");
 
@@ -25,20 +32,20 @@ router.get("/", function (req, res, next) {
   try {
     var user = req.session.user;
     return res.render("doctor/index", {
+      title: "Trang tổng quan",
       user,
       errors: req.flash("errors"),
       success: req.flash("success"),
     });
   } catch (error) {
-    return res
-      .status(500)
-      .render("error", {
-        error: {
-          status: 500,
-          stack: "Unable to connect to the system, please try again!",
-        },
-        message: "Connection errors",
-      });
+    return res.status(500).render("error", {
+      title: "Lỗi",
+      error: {
+        status: 500,
+        stack: "Unable to connect to the system, please try again!",
+      },
+      message: "Connection errors",
+    });
   }
 });
 
@@ -84,6 +91,7 @@ router.get("/patients", async (req, res) => {
   const totalPages = Math.ceil(totalPatients / limitNum);
 
   res.render("doctor/patients", {
+    title: "Danh sách bệnh nhân",
     user: req.session.user,
     success: req.flash("success"),
     errors: req.flash("errors"),
@@ -104,29 +112,30 @@ router.get("/patients", async (req, res) => {
 |------------------------------------------------------------------------------------------------------
 */
 
-router.get("/patients/create", (req, res, next) => {
+router.get("/patients/create", requireWallet, (req, res, next) => {
   try {
     res.render("doctor/create-patient", {
+      title: "Tạo hồ sơ bệnh nhân",
       user: req.session.user,
       success: req.flash("success"),
       errors: req.flash("errors"),
       oldData: req.flash("oldData")[0] || {},
     });
   } catch (error) {
-    return res
-      .status(500)
-      .render("error", {
-        error: {
-          status: 500,
-          stack: "Unable to connect to the system, please try again!",
-        },
-        message: "Connection errors",
-      });
+    return res.status(500).render("error", {
+      title: "Lỗi",
+      error: {
+        status: 500,
+        stack: "Unable to connect to the system, please try again!",
+      },
+      message: "Connection errors",
+    });
   }
 });
 
 router.post(
   "/patients/create",
+  requireWallet,
   CreatePatientValidator,
   async (req, res, next) => {
     const {
@@ -144,6 +153,7 @@ router.post(
       allergies,
       chronicDiseases,
     } = req.body;
+    console.log(req.body);
     const result = validationResult(req);
     if (result.errors.length > 0) {
       req.flash("errors", result.errors[0].msg);
@@ -267,13 +277,24 @@ router.get("/patient/:id", async (req, res) => {
       return res.redirect("/doctor/patients");
     }
 
+    const doctor = await DoctorModel.findOne({
+      userID: req.session.user.id,
+    }).lean();
+
+    const accessibleRecordCodes =
+      doctor?.accessibleRecords
+        ?.filter((r) => r.patientCode === patient.patientCode)
+        .map((r) => r.recordCode) || [];
+
     const medicalRecords = await MedicalRecordModel.find({
       patientID: req.params.id,
+      recordCode: { $in: accessibleRecordCodes },
     })
       .populate("doctorID", "fullname")
       .sort({ visitDate: -1 });
 
     res.render("doctor/patient-detail", {
+      title: `Chi tiết bệnh nhân - ${patient.fullname}`,
       user: req.session.user,
       patient,
       medicalRecords,
@@ -295,16 +316,66 @@ router.get("/patient/:id", async (req, res) => {
 
 router.get("/medical-record/:id", async (req, res) => {
   try {
-    const record = await MedicalRecordModel.findById(req.params.id)
-      .populate("patientID")
-      .populate("doctorID", "fullname");
-
-    if (!record) {
-      req.flash("error", "Không tìm thấy bệnh án.");
+    const doctor = await DoctorModel.findOne({ userID: req.session.user.id });
+    if (!doctor) {
+      req.flash("errors", "Không tìm thấy thông tin bác sĩ.");
       return res.redirect("/doctor/patients");
     }
 
+    const record = await MedicalRecordModel.findById(req.params.id)
+      .populate("patientID", "patientCode fullname")
+      .populate("doctorID", "fullname");
+
+    if (!record) {
+      req.flash("errors", "Không tìm thấy bệnh án.");
+      return res.redirect("/doctor/patients");
+    }
+
+    //double check quyền truy cập bệnh án
+    // const hasAccessInDB = doctor.accessibleRecords.some(
+    //   (ar) => ar.recordCode === record.recordCode
+    // );
+
+    // if (!hasAccessInDB) {
+    //   req.flash("errors", "Bạn không có quyền truy cập bệnh án này.");
+    //   return res.redirect("doctor/patients");
+    // }
+
+    // Kiểm tra xem bệnh án đã được xác nhận trên blockchain chưa
+    if (record.status !== "Verified") {
+      req.flash(
+        "errors",
+        "Bệnh án này chưa được xác nhận trên blockchain. Vui lòng xác nhận trước khi xem chi tiết."
+      );
+
+      if (!record.lastVerifiedHash) {
+        console.log("redirect to confirm create");
+        return res.redirect(
+          `/doctor/medical-records/confirm/${record._id}?type=create`
+        );
+      }
+
+      return res.redirect(
+        `/doctor/medical-records/confirm/${record._id}?type=edit`
+      );
+    }
+
+    const hasAccessOnChain = await checkRecordAccess(
+      record.patientID.patientCode,
+      record.recordCode,
+      doctor.doctorCode
+    );
+
+    if (!hasAccessOnChain) {
+      req.flash(
+        "errors",
+        "Quyền truy cập bệnh án này đã bị thu hồi trên Blockchain."
+      );
+      return res.redirect("doctor/patients");
+    }
+
     res.render("doctor/record-detail", {
+      title: `Bệnh án ${record.recordCode}`,
       user: req.session.user,
       record,
       success: req.flash("success"),
@@ -313,7 +384,7 @@ router.get("/medical-record/:id", async (req, res) => {
   } catch (error) {
     console.error(error);
     req.flash("errors", "Có lỗi xảy ra khi truy vấn thông tin bệnh án.");
-    res.redirect("/doctor/patients");
+    res.redirect("doctor/patients");
   }
 });
 
@@ -354,6 +425,7 @@ router.get("/records", async (req, res) => {
     const totalPages = Math.ceil(totalRecords / limitNum);
 
     res.render("doctor/records", {
+      title: "Danh sách bệnh án",
       user: req.session.user,
       records: records,
       currentDate: currentDateDisplay,
@@ -377,7 +449,7 @@ router.get("/records", async (req, res) => {
 |------------------------------------------------------------------------------------------------------
 */
 
-router.get("/medical-records/create", async (req, res) => {
+router.get("/medical-records/create", requireWallet, async (req, res) => {
   try {
     const { patientId } = req.query;
     let selectedPatient = null;
@@ -388,6 +460,7 @@ router.get("/medical-records/create", async (req, res) => {
     }
 
     res.render("doctor/create-record", {
+      title: "Tạo bệnh án",
       user: req.session.user,
       selectedPatientId: patientId,
       selectedPatient,
@@ -404,6 +477,7 @@ router.get("/medical-records/create", async (req, res) => {
 
 router.post(
   "/medical-records/create",
+  requireWallet,
   CreateRecordValidator,
   async (req, res) => {
     const result = validationResult(req);
@@ -430,10 +504,10 @@ router.post(
         pulse,
         followUpDate,
         followUpNote,
-        "medication-name": medNames,
-        "medication-dosage": medDosages,
-        "medication-frequency": medFrequencies,
-        "medication-duration": medDurations,
+        "medication-name[]": medNames,
+        "medication-dosage[]": medDosages,
+        "medication-frequency[]": medFrequencies,
+        "medication-duration[]": medDurations,
       } = req.body;
 
       const patient = await PatientModel.findOne({ patientCode: patientCode });
@@ -471,32 +545,78 @@ router.post(
         attempts++;
       }
 
-      const prescribedMedications = (medNames || [])
-        .map((name, index) => ({
-          name,
-          dosage: medDosages[index],
-          frequency: medFrequencies[index],
-          duration: medDurations[index],
-        }))
-        .filter((med) => med.name);
+      let prescribedMedications = [];
+      if (medNames) {
+        const names = Array.isArray(medNames) ? medNames : [medNames];
+        const dosages = Array.isArray(medDosages) ? medDosages : [medDosages];
+        const frequencies = Array.isArray(medFrequencies)
+          ? medFrequencies
+          : [medFrequencies];
+        const durations = Array.isArray(medDurations)
+          ? medDurations
+          : [medDurations];
 
-      const record = new MedicalRecordModel({
+        prescribedMedications = names
+          .map((name, index) => ({
+            name,
+            dosage: dosages[index],
+            frequency: frequencies[index],
+            duration: durations[index],
+          }))
+          .filter((med) => med.name && med.name.trim() !== "");
+      }
+
+      const recordData = {
         recordCode,
         patientID: patient._id,
         doctorID: req.session.user.id,
         reasonForVisit,
-        symptoms: symptoms ? symptoms.split(",").map((s) => s.trim()) : [],
+        symptoms: symptoms
+          ? symptoms
+              .split(",")
+              .map((s) => s.trim())
+              .filter(Boolean)
+          : [],
         diagnosis,
         notes,
         vitalSigns: { height, weight, temperature, bloodPressure, pulse },
         prescribedMedications,
         followUpDate: followUpDate || null,
         followUpNote,
+        created_at: new Date(),
+      };
+
+      const recordHash = ethers.keccak256(
+        ethers.toUtf8Bytes(JSON.stringify(recordData))
+      );
+
+      // Lưu vào DB với status Pending
+      const record = new MedicalRecordModel({
+        ...recordData,
+        status: "Pending", // Đợi xác nhận từ blockchain
+        recordHash: recordHash,
       });
+
+      // Cập nhật danh sách bệnh án có thể truy cập của bác sĩ
+      const updatedDoctor = await DoctorModel.findOneAndUpdate(
+        { userID: req.session.user.id },
+        {
+          $addToSet: {
+            accessibleRecords: {
+              recordCode: recordData.recordCode,
+              patientCode: patientCode,
+            },
+          },
+        }
+      );
+
       await record.save();
-      req.flash("success", "Tạo bệnh án mới thành công!");
-      res.redirect(`/doctor/patient/${patient._id}`);
+
+      return res.redirect(
+        `/doctor/medical-records/confirm/${record._id}?type=create`
+      );
     } catch (err) {
+      console.error("Blockchain or DB save error:", err);
       if (err.code === 11000) {
         req.flash("errors", "Mã bệnh án đã tồn tại. Vui lòng thử lại.");
         req.flash("oldData", req.body);
@@ -515,6 +635,255 @@ router.post(
     }
   }
 );
+
+/*
+|------------------------------------------------------------------------------------------------------
+| HIỂN THỊ TRANG XÁC NHẬN GHI BLOCKCHAIN
+|------------------------------------------------------------------------------------------------------
+*/
+router.get("/medical-records/confirm/:id", requireWallet, async (req, res) => {
+  try {
+    const { type } = req.query; // 'create', 'edit'
+    const record = await MedicalRecordModel.findById(req.params.id);
+
+    if (!record) {
+      req.flash("errors", "Không tìm thấy bệnh án để xác nhận.");
+      return res.redirect("/doctor/records");
+    }
+
+    const patient = await PatientModel.findById(record.patientID);
+
+    req.flash(
+      "success",
+      `Bệnh án đã được ${
+        type === "create" ? "tạo" : "cập nhật"
+      } thành công! Vui lòng xác nhận để ghi lên blockchain.`
+    );
+
+    res.render("doctor/confirm-record", {
+      title: "Xác nhận Bệnh án",
+      user: req.session.user,
+      record: record,
+      patient: patient,
+      type: type || "create",
+      success: req.flash("success"),
+      errors: req.flash("errors"),
+    });
+  } catch (error) {
+    console.error("Error showing confirmation page:", error);
+    req.flash("errors", "Có lỗi xảy ra khi hiển thị trang xác nhận.");
+    res.redirect("/doctor/records");
+  }
+});
+
+/*
+|------------------------------------------------------------------------------------------------------
+| CHỈNH SỬA BỆNH ÁN
+|------------------------------------------------------------------------------------------------------
+*/
+
+router.get("/medical-records/edit/:id", async (req, res) => {
+  try {
+    const record = await MedicalRecordModel.findById(req.params.id)
+      .populate("patientID", "patientCode fullname")
+      .populate("doctorID", "fullname");
+
+    if (!record) {
+      req.flash("errors", "Không tìm thấy bệnh án.");
+      return res.redirect("/doctor/records");
+    }
+
+    const doctor = await DoctorModel.findOne({ userID: req.session.user.id });
+    if (!doctor) {
+      req.flash("errors", "Không tìm thấy thông tin bác sĩ.");
+      return res.redirect("/doctor/records");
+    }
+
+    const hasAccessOnChain = await checkRecordAccess(
+      record.patientID.patientCode,
+      record.recordCode,
+      doctor.doctorCode
+    );
+
+    if (!hasAccessOnChain) {
+      req.flash(
+        "errors",
+        "Quyền truy cập bệnh án này đã bị thu hồi trên Blockchain."
+      );
+      return res.redirect("doctor/records");
+    }
+
+    res.render("doctor/edit-record", {
+      title: `Chỉnh sửa bệnh án ${record.recordCode}`,
+      user: req.session.user,
+      record,
+      errors: req.flash("errors"),
+      success: req.flash("success"),
+    });
+  } catch (error) {
+    console.error(error);
+    req.flash("errors", "Không thể tải trang chỉnh sửa bệnh án.");
+    res.redirect("/doctor/records");
+  }
+});
+
+router.post(
+  "/medical-records/edit/:id",
+  requireWallet,
+  CreateRecordValidator,
+  async (req, res) => {
+    const result = validationResult(req);
+    if (result.errors.length > 0) {
+      req.flash("errors", result.errors[0].msg);
+      const recordIdQuery = req.params.id ? `?id=${req.params.id}` : "";
+      return res.redirect(`/doctor/medical-records/edit/${recordIdQuery}`);
+    }
+    try {
+      const {
+        recordCode,
+        patientCode,
+        reasonForVisit,
+        diagnosis,
+        notes,
+        symptoms,
+        height,
+        weight,
+        temperature,
+        bloodPressure,
+        pulse,
+        followUpDate,
+        followUpNote,
+        "medication-name[]": medNames,
+        "medication-dosage[]": medDosages,
+        "medication-frequency[]": medFrequencies,
+        "medication-duration[]": medDurations,
+      } = req.body;
+      const record = await MedicalRecordModel.findById(req.params.id);
+      if (!record) {
+        req.flash("errors", "Không tìm thấy bệnh án.");
+        return res.redirect("/doctor/records");
+      }
+
+      const patient = await PatientModel.findOne({ patientCode: patientCode });
+      if (!patient) {
+        req.flash("errors", "Không tìm thấy bệnh nhân với mã đã nhập.");
+        req.flash("oldData", req.body);
+        const patientIdQuery = req.body.patientId
+          ? `?patientId=${req.body.patientId}`
+          : "";
+        return res.redirect("/doctor/records");
+      }
+
+      let prescribedMedications = [];
+      if (medNames) {
+        const names = Array.isArray(medNames) ? medNames : [medNames];
+        const dosages = Array.isArray(medDosages) ? medDosages : [medDosages];
+        const frequencies = Array.isArray(medFrequencies)
+          ? medFrequencies
+          : [medFrequencies];
+        const durations = Array.isArray(medDurations)
+          ? medDurations
+          : [medDurations];
+
+        prescribedMedications = names
+          .map((name, index) => ({
+            name,
+            dosage: dosages[index],
+            frequency: frequencies[index],
+            duration: durations[index],
+          }))
+          .filter((med) => med.name && med.name.trim() !== "");
+      }
+
+      const updatedRecordData = {
+        recordCode,
+        patientID: patient._id,
+        doctorID: req.session.user.id,
+        reasonForVisit,
+        symptoms: symptoms
+          ? symptoms
+              .split(",")
+              .map((s) => s.trim())
+              .filter(Boolean)
+          : [],
+        diagnosis,
+        notes,
+        vitalSigns: { height, weight, temperature, bloodPressure, pulse },
+        prescribedMedications,
+        followUpDate: followUpDate || null,
+        followUpNote,
+        updated_at: new Date(),
+      };
+
+      const recordHash = ethers.keccak256(
+        ethers.toUtf8Bytes(JSON.stringify(updatedRecordData))
+      );
+
+      const updatedRecord = await MedicalRecordModel.findByIdAndUpdate(
+        req.params.id,
+        {
+          ...updatedRecordData,
+          status: "Pending", // Đợi xác nhận từ blockchain
+          recordHash: recordHash,
+          lastVerifiedHash: record.recordHash, // Lưu hash cũ
+        },
+        { new: true }
+      );
+
+      await updatedRecord.save();
+      return res.redirect(
+        `/doctor/medical-records/confirm/${updatedRecord._id}?type=edit`
+      );
+    } catch (err) {
+      console.error("Blockchain or DB save error:", err);
+      req.flash("errors", "Đã xảy ra lỗi khi lưu bệnh án, vui lòng thử lại.");
+      req.flash("oldData", req.body);
+      const recordIdQuery = req.params.id ? `?id=${req.params.id}` : "";
+      return res.redirect(`/doctor/medical-records/edit/${recordIdQuery}`);
+    }
+  }
+);
+
+/*
+|------------------------------------------------------------------------------------------------------
+| CẬP NHẬT TRẠNG THÁI BỆNH ÁN SAU KHI GHI LÊN BLOCKCHAIN
+|------------------------------------------------------------------------------------------------------
+*/
+router.post("/medical-records/update-status", async (req, res) => {
+  try {
+    const { recordId } = req.body;
+
+    if (!recordId) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Thiếu thông tin cần thiết." });
+    }
+
+    const record = await MedicalRecordModel.findByIdAndUpdate(
+      recordId,
+      { status: "Verified" },
+      { new: true }
+    );
+
+    if (!record) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Không tìm thấy bệnh án." });
+    }
+
+    return res.json({
+      success: true,
+      message: "Cập nhật trạng thái bệnh án thành công.",
+    });
+  } catch (error) {
+    console.error("Lỗi khi cập nhật trạng thái bệnh án:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Lỗi máy chủ khi cập nhật trạng thái bệnh án.",
+    });
+  }
+});
+
 /*
 |------------------------------------------------------------------------------------------------------
 | THÔNG TIN TÀI KHOẢN
@@ -522,22 +891,84 @@ router.post(
 */
 
 router.get("/profile", function (req, res, next) {
+  // console.log(req.session.user.walletAddress);
   try {
     res.render("doctor/profile", {
+      title: "Thông tin tài khoản",
       user: req.session.user,
       success: req.flash("success"),
       errors: req.flash("errors"),
     });
   } catch (error) {
-    return res
-      .status(500)
-      .render("error", {
-        error: {
-          status: 500,
-          stack: "Unable to connect to the system, please try again!",
-        },
-        message: "Connection errors",
+    return res.status(500).render("error", {
+      title: "Lỗi",
+      error: {
+        status: 500,
+        stack: "Unable to connect to the system, please try again!",
+      },
+      message: "Connection errors",
+    });
+  }
+});
+
+router.post("/profile/connect-wallet", async (req, res) => {
+  try {
+    const { walletAddress } = req.body;
+    if (!walletAddress) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Địa chỉ ví không được cung cấp." });
+    }
+
+    if (
+      walletAddress.toLowerCase() === process.env.WALLET_ADDRESS.toLowerCase()
+    ) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Địa chỉ ví không hợp lệ." });
+    }
+
+    if (req.session.user.walletAddress) {
+      return res.status(403).json({
+        success: false,
+        message: "Tài khoản đã được liên kết với một ví.",
       });
+    }
+
+    const existingWalletUser = await UserModel.findOne({
+      walletAddress: walletAddress,
+    });
+    if (existingWalletUser) {
+      return res.status(409).json({
+        success: false,
+        message: "Địa chỉ ví đã được liên kết với tài khoản khác.",
+      });
+    }
+
+    const doctor = await DoctorModel.findOne({ userID: req.session.user.id });
+    const updatedUser = await UserModel.findByIdAndUpdate(
+      req.session.user.id,
+      { walletAddress: walletAddress },
+      { new: true }
+    );
+
+    if (!updatedUser) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Không tìm thấy người dùng." });
+    }
+
+    // console.log(doctor.doctorCode, walletAddress);
+    await assignDoctor(doctor.doctorCode, walletAddress);
+
+    req.session.user.walletAddress = updatedUser.walletAddress;
+    return res.json({
+      success: true,
+      walletAddress: updatedUser.walletAddress,
+    });
+  } catch (error) {
+    console.error("Lỗi khi kết nối ví:", error);
+    return res.status(500).json({ success: false, message: "Lỗi máy chủ." });
   }
 });
 
@@ -574,15 +1005,14 @@ router.post(
       return res.redirect("/doctor/profile");
     } catch (error) {
       console.error(error);
-      return res
-        .status(500)
-        .render("error", {
-          error: {
-            status: 500,
-            stack: "Unable to connect to the system, please try again!",
-          },
-          message: "Connection errors",
-        });
+      return res.status(500).render("error", {
+        title: "Lỗi",
+        error: {
+          status: 500,
+          stack: "Unable to connect to the system, please try again!",
+        },
+        message: "Connection errors",
+      });
     }
   }
 );
@@ -595,21 +1025,21 @@ router.post(
 router.get("/change-password", function (req, res, next) {
   try {
     res.render("doctor/change-password", {
+      title: "Đổi mật khẩu",
       user: req.session.user,
       errors: req.flash("errors"),
       success: req.flash("success"),
       oldData: req.flash("oldData")[0] || {},
     });
   } catch (error) {
-    return res
-      .status(500)
-      .render("error", {
-        error: {
-          status: 500,
-          stack: "Unable to connect to the system, please try again!",
-        },
-        message: "Connection errors",
-      });
+    return res.status(500).render("error", {
+      title: "Lỗi",
+      error: {
+        status: 500,
+        stack: "Unable to connect to the system, please try again!",
+      },
+      message: "Connection errors",
+    });
   }
 });
 
@@ -651,15 +1081,14 @@ router.post(
       req.flash("success", "Cập nhật mật khẩu thành công!");
       return res.redirect("/doctor/change-password");
     } catch (error) {
-      return res
-        .status(500)
-        .render("error", {
-          error: {
-            status: 500,
-            stack: "Unable to connect to the system, please try again!",
-          },
-          message: "Connection errors",
-        });
+      return res.status(500).render("error", {
+        title: "Lỗi",
+        error: {
+          status: 500,
+          stack: "Unable to connect to the system, please try again!",
+        },
+        message: "Connection errors",
+      });
     }
   }
 );

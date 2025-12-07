@@ -27,9 +27,7 @@
         <div class="row align-items-center">
           <div class="col-md-12">
             <div class="page-header-title">
-              <h5 class="m-b-10">
-                Hồ sơ bệnh án của tôi (<%= patient.patientCode %>)
-              </h5>
+              <h5 class="m-b-10">Hồ sơ bệnh án</h5>
             </div>
             <ul class="breadcrumb">
               <li class="breadcrumb-item">
@@ -44,6 +42,49 @@
       </div>
     </div>
 
+    <% if (!patient) { %>
+    <!-- Empty State: No patient linked -->
+    <div class="row">
+      <div class="col-sm-12">
+        <div class="card text-center">
+          <div class="card-body">
+            <i class="feather icon-user-x f-40 text-muted mb-3"></i>
+            <h5 class="card-title">Chưa có hồ sơ bệnh nhân nào được liên kết</h5>
+            <p class="card-text text-muted">
+              Để xem lịch sử khám bệnh, bạn cần liên kết với hồ sơ bệnh nhân của mình.
+            </p>
+            <button id="linkPatientBtn" class="btn btn-primary">
+              <i class="feather icon-link mr-1"></i>Tìm & Liên kết hồ sơ
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <% } else { %>
+    <!-- Patient Tabs -->
+    <div class="row">
+      <div class="col-sm-12">
+        <div class="card">
+          <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+              <ul class="nav nav-tabs" id="patientTab" role="tablist">
+                <% if (allPatients && allPatients.length > 0) { %>
+                  <% allPatients.forEach(p => { %>
+                  <li class="nav-item">
+                    <a class="nav-link <%= p.patientCode === patient.patientCode ? 'active' : '' %>" href="/medical-history?patientCode=<%= p.patientCode %>" role="tab"><%= p.fullname %></a>
+                  </li>
+                  <% }) %>
+                <% } %>
+              </ul>
+              <button id="linkPatientBtn" class="btn btn-sm btn-outline-primary">
+                <i class="feather icon-link mr-1"></i>Tìm & Liên kết hồ sơ
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Thông tin bệnh nhân -->
     <div class="row">
       <div class="col-sm-12">
@@ -51,9 +92,11 @@
           <div class="card-header">
             <div class="d-flex justify-content-between align-items-center">
               <h5><i class="feather icon-user mr-2"></i>Thông tin cá nhân</h5>
-              <a href="/medical-history/edit" class="btn btn-sm btn-primary"
-                >Chỉnh sửa thông tin</a
-              >
+              <% if (patient.walletAddress) { %>
+                <span class="badge badge-light-success">
+                  <i class="feather icon-check-circle mr-1"></i> Đã liên kết ví
+                </span>
+              <% } %>
             </div>
           </div>
           <div class="card-body">
@@ -125,7 +168,15 @@
               </div>
             </div>
             <hr />
-            <h6>Thông tin người giám hộ</h6>
+            <div class="d-flex justify-content-between align-items-center mb-3">
+              <h6>Thông tin người giám hộ</h6>
+              <% if (user.walletAddress && !patient.usingGuardianWallet && patient.guardianIDNumber && user.identificationNumber === patient.guardianIDNumber) { %>
+                <button id="linkGuardianWalletBtn" class="btn btn-sm btn-outline-success">
+                  Liên kết ví
+                </button>
+              <% } %>
+            </div>
+
             <div class="row">
               <div class="col-md-6">
                 <p>
@@ -172,8 +223,8 @@
                     <th>Mã Bệnh Án</th>
                     <th>Ngày Khám</th>
                     <th>Bác sĩ</th>
-                    <th>Chẩn đoán</th>
-                    <th>Hành động</th>
+                    <!-- <th>Chẩn đoán</th> -->
+                    <th>Thao tác</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -188,7 +239,7 @@
                     <td><%= record.recordCode || 'Không có' %></td>
                     <td><%= record.visitDate.toLocaleDateString('vi-VN') %></td>
                     <td><%= record.doctorID.fullname %></td>
-                    <td><%= record.diagnosis || 'Chưa có chẩn đoán' %></td>
+                    <!-- <td><%= record.diagnosis || 'Chưa có chẩn đoán' %></td> -->
                     <td>
                       <a
                         href="/medical-record/<%= record._id %>"
@@ -201,11 +252,147 @@
                 </tbody>
               </table>
             </div>
+            <% if (totalPages > 1) { %>
+            <nav aria-label="Page navigation">
+              <ul class="pagination justify-content-end">
+                <li class="page-item <%= currentPage === 1 ? 'disabled' : '' %>">
+                  <a class="page-link" href="?patientCode=<%= patient.patientCode %>&page=<%= currentPage - 1 %>" tabindex="-1">Previous</a>
+                </li>
+                <% for(let i = 1; i <= totalPages; i++) { %>
+                  <% 
+                    const showPage = Math.abs(i - currentPage) < 3 || i === 1 || i === totalPages;
+                    const showEllipsis = (i === 2 && currentPage > 4) || (i === totalPages - 1 && currentPage < totalPages - 3);
+                  %>
+                  <% if (showEllipsis) { %>
+                    <li class="page-item disabled"><span class="page-link">...</span></li>
+                  <% } %>
+                  <% if (showPage) { %>
+                    <li class="page-item <%= i === currentPage ? 'active' : '' %>">
+                      <a class="page-link" href="?patientCode=<%= patient.patientCode %>&page=<%= i %>"><%= i %></a>
+                    </li>
+                  <% } %>
+                <% } %>
+                <li class="page-item <%= currentPage === totalPages ? 'disabled' : '' %>">
+                  <a class="page-link" href="?patientCode=<%= patient.patientCode %>&page=<%= currentPage + 1 %>">Next</a>
+                </li>
+              </ul>
+            </nav>
+            <% } %>
           </div>
         </div>
       </div>
     </div>
+    <% } %>
+
   </div>
 </div>
+
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    const linkButton = document.getElementById("linkPatientBtn");
+    const COOLDOWN_MINUTES = 5;
+    const COOLDOWN_MS = COOLDOWN_MINUTES * 60 * 1000;
+
+    function updateButtonState() {
+      const lastClickTimestamp = localStorage.getItem("lastLinkPatientClick");
+      if (!lastClickTimestamp) {
+        linkButton.disabled = false;
+        linkButton.innerHTML =
+          '<i class="feather icon-link mr-1"></i>Tìm & Liên kết hồ sơ';
+        return;
+      }
+
+      const timePassed = Date.now() - parseInt(lastClickTimestamp, 10);
+
+      if (timePassed < COOLDOWN_MS) {
+        linkButton.disabled = true;
+        const timeLeft = COOLDOWN_MS - timePassed;
+        const minutes = Math.floor(timeLeft / 60000);
+        const seconds = Math.floor((timeLeft % 60000) / 1000);
+        linkButton.textContent = `Vui lòng đợi ${minutes}m ${seconds}s`;
+
+        const intervalId = setInterval(() => {
+          const newTimeLeft = COOLDOWN_MS - (Date.now() - parseInt(lastClickTimestamp, 10));
+          if (newTimeLeft <= 0) {
+            clearInterval(intervalId);
+            updateButtonState();
+          } else {
+            const m = Math.floor(newTimeLeft / 60000);
+            const s = Math.floor((newTimeLeft % 60000) / 1000);
+            linkButton.textContent = `Vui lòng đợi ${m}m ${s}s`;
+          }
+        }, 1000);
+      } else {
+        linkButton.disabled = false;
+        linkButton.innerHTML =
+          '<i class="feather icon-link mr-1"></i>Tìm & Liên kết hồ sơ';
+        localStorage.removeItem("lastLinkPatientClick");
+      }
+    }
+
+    linkButton.addEventListener("click", async () => {
+      linkButton.disabled = true;
+      linkButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Đang xử lý...';
+      localStorage.setItem("lastLinkPatientClick", Date.now().toString());
+
+      try {
+        const response = await fetch("/profile/link-patients", { method: "POST" });
+        const result = await response.json();
+        toastr.warning(result.message);
+        if(result.success && result.found > 0) {
+            window.location.reload();
+            return;
+        }
+      } catch (error) {
+        alert("Có lỗi xảy ra. Vui lòng thử lại.");
+      } finally {
+        updateButtonState();
+      }
+    });
+
+    updateButtonState();
+  });
+</script>
+<% if (patient && user.walletAddress && !patient.usingGuardianWallet && patient.guardianIDNumber && user.identificationNumber === patient.guardianIDNumber) { %>
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    const linkGuardianWalletBtn = document.getElementById("linkGuardianWalletBtn");
+    if (linkGuardianWalletBtn) {
+      linkGuardianWalletBtn.addEventListener("click", async () => {
+        const patientCode = "<%= patient.patientCode %>";
+        
+        linkGuardianWalletBtn.disabled = true;
+        linkGuardianWalletBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Đang xử lý...';
+
+        try {
+          const response = await fetch("/profile/link-guardian-wallet", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ patientCode: patientCode }),
+          });
+
+          const result = await response.json();
+
+          if (response.ok && result.success) {
+            toastr.success(result.message);
+            linkGuardianWalletBtn.style.display = 'none'; 
+            window.location.reload();
+          } else {
+            toastr.error(result.message || "Có lỗi xảy ra.");
+            linkGuardianWalletBtn.disabled = false;
+            linkGuardianWalletBtn.innerHTML = '<i class="feather icon-shield mr-1"></i>Liên kết ví';
+          }
+        } catch (error) {
+          toastr.error("Lỗi kết nối. Vui lòng thử lại.");
+          linkGuardianWalletBtn.disabled = false;
+          linkGuardianWalletBtn.innerHTML = '<i class="feather icon-shield mr-1"></i>Liên kết ví';
+        }
+      });
+    }
+  });
+</script>
+<% } %>
 
 <%- include('./partials/footer') %>

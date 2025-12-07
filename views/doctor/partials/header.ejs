@@ -6,7 +6,7 @@
       name="viewport"
       content="width=device-width, initial-scale=1, shrink-to-fit=no"
     />
-    <title>Trang chủ</title>
+    <title><%= typeof title !== 'undefined' ? title : 'Trang chủ' %></title>
     <link
       rel="stylesheet"
       href="/assets/vendors/iconfonts/mdi/css/materialdesignicons.css"
@@ -33,7 +33,6 @@
     <%- include('./sidebar'); -%>
     <!-- [ Header ] start -->
 
-    <!-- Header with dynamic role-based styling -->
     <header
       class="navbar pcoded-header navbar-expand-lg navbar-light header-dark"
     >
@@ -70,7 +69,20 @@
         </ul>
       </div>
     </header>
+    <!-- [ Header ] end -->
+    
+    <script src="/assets/js/account-change.js"></script>
+    <script>
+      const clientUser = <%- JSON.stringify(user || null) %>;
+
+      const hasWallet = clientUser && clientUser.walletAddress;
+
+      if (hasWallet) {
+        // console.log("Header: user có ví liên kết");
+        listenForAccountChange('<%= user.walletAddress %>');
+       } //else {
+      //   console.log("Header: user không có ví liên kết");
+      // }
+    </script>
   </body>
 </html>
-
-<!-- [ Header ] end -->

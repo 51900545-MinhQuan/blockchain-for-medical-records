@@ -10,6 +10,14 @@
   }
 </style>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.15.0/ethers.umd.min.js"></script>
+<script>
+    const CONTRACT_ADDR = "<%= process.env.CONTRACT_ADDR %>";
+    const POLYGON_CHAIN_ID = "<%= process.env.POLYGON_CHAIN_ID %>";
+    const RPC_URL = "<%= process.env.RPC_URL %>";
+</script>
+<script src="/assets/js/blockchain-client.js"></script>
+
 <div class="pcoded-main-container">
   <div class="pcoded-content">
     <!-- [ breadcrumb ] start -->
@@ -53,7 +61,7 @@
                   record.patientID.fullname %> (<%= record.patientID.patientCode%>)
                 </p>
                 <p>
-                  <span class="info-label">Bác sĩ:</span> <%=record.doctorID.fullname %>
+                  <span class="info-label">Bác sĩ:</span> <%=record.doctorID.fullname %> (<%= record.doctorID.linkedDoctorCode%>)
                 </p>
               </div>
               <div class="col-md-6">
@@ -76,9 +84,9 @@
             <p>
               <span class="info-label">Triệu chứng:</span> <%= record.symptoms && record.symptoms.length ? record.symptoms.join(', ') : 'Không có' %>
             </p>
-            <p>
+            <!-- <p>
               <span class="info-label">Chẩn đoán:</span> <%= record.diagnosis %>
-            </p>
+            </p> -->
             <p>
               <span class="info-label">Ghi chú của bác sĩ:</span> <%= record.notes || 'Không có' %>
             </p>
@@ -153,9 +161,194 @@
           </div>
         </div>
         <% } %>
+
+        <div class="card">
+          <div class="card-header">
+            <h5>Cấp quyền truy cập cho Bác sĩ</h5>
+          </div>
+          <div class="card-body">
+            <p>Chọn bác sĩ từ danh sách dưới đây để cấp quyền xem bệnh án này.</p>
+            <form id="grantAccessForm" action="/medical-record/grant-access" method="POST">
+              <input type="hidden" name="recordId" value="<%= record._id %>">
+              <input type="hidden" name="recordCode" value="<%= record.recordCode %>">
+              <input type="hidden" name="patientCode" value="<%= record.patientID.patientCode %>">
+              <div class="form-group">
+                <label for="doctorSelect">Chọn Bác sĩ</label>
+                <select class="form-control" id="doctorSelect" name="doctorCode" required>
+                  <option value="" disabled selected>-- Vui lòng chọn bác sĩ --</option>
+                  <% if (typeof doctors !== 'undefined' && doctors.length > 0) { %>
+                    <% doctors.forEach(doctor => { %>
+                      <% const alreadyGranted = grantedAccessDoctors.some(grantedDoctor => grantedDoctor.doctorCode === doctor.doctorCode); %>
+                      <% if (!alreadyGranted) { %>
+                        <option value="<%= doctor.doctorCode %>">
+                          <%= doctor.doctorCode %> - <%= doctor.userID.fullname %>
+                        </option>
+                      <% } %>
+                    <% }) %>
+                  <% } else { %>
+                    <option value="" disabled>Không tìm thấy bác sĩ nào.</option>
+                  <% } %>
+                </select>
+              </div>
+              <% if (typeof disableGrantAccess !== 'undefined' && disableGrantAccess) { %>
+                <small class="form-text text-danger mb-2">
+                  Không thể cấp quyền truy cập vì bạn chưa liên kết ví hoặc bệnh nhân này không sử dụng ví người giám hộ.
+                </small>
+              <button disabled type="submit" class="btn btn-primary" id="grantAccessBtn">Cấp quyền</button>
+              <% } else { %>
+              <button type="submit" class="btn btn-primary" id="grantAccessBtn">Cấp quyền</button>
+              <% } %>
+            </form>
+            <small class="form-text text-muted mt-2">
+              Lưu ý: Bác sĩ được cấp quyền sẽ có thể xem và chỉnh sửa bệnh án này.
+            </small>
+          </div>
+          <div class="border-top card-header">
+              <h5 class="mb-3">Danh sách Bác sĩ có quyền truy cập</h5>
+              <% if (grantedAccessDoctors.length === 0) { %>
+                <ul class="list-group">
+                  <li class="list-group-item d-flex justify-content-between align-items-center">
+                    <div>
+                      <strong><%= record.doctorID.linkedDoctorCode %> - <%= record.doctorID.fullname %></strong>
+                      <span class="badge badge-info ml-2">Bác sĩ tạo</span>
+                    </div>
+              <% } else { %>
+                <ul class="list-group">
+                  <li class="list-group-item d-flex justify-content-between align-items-center">
+                    <div>
+                      <strong><%= record.doctorID.linkedDoctorCode %> - <%= record.doctorID.fullname %></strong>
+                      <span class="badge badge-info ml-2">Bác sĩ tạo</span>
+                    </div>
+                  </li>
+                  <% grantedAccessDoctors.forEach(doctor => {
+                      if(doctor.doctorCode !== record.doctorID.linkedDoctorCode){ %>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                      <strong><%= doctor.doctorCode %> - <%= doctor.userID.fullname %></strong>
+                      <button
+                        type="button"
+                        class="btn btn-danger btn-sm revokeAccessBtn"
+                        data-patient-code="<%= record.patientID.patientCode %>"
+                        data-record-code="<%= record.recordCode %>"
+                        data-doctor-code="<%= doctor.doctorCode %>"
+                        data-record-id="<%= record._id %>"
+                      >Thu hồi</button>
+                    </li>
+                  <% }}) %>
+                </ul>
+              <% } %>
+          </div>
+        </div>
+
       </div>
     </div>
   </div>
 </div>
+
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    const grantAccessForm = document.getElementById("grantAccessForm");
+    const grantAccessBtn = document.getElementById("grantAccessBtn");
+    const revokeAccessButtons = document.querySelectorAll(".revokeAccessBtn");
+    grantAccessForm.addEventListener("submit", async function (event) {
+      event.preventDefault(); 
+
+      grantAccessBtn.disabled = true;
+      grantAccessBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Đang xử lý...';
+
+      const formData = new FormData(grantAccessForm);
+      const patientCode = formData.get("patientCode");
+      const recordCode = formData.get("recordCode");
+      const doctorCode = formData.get("doctorCode");
+      const recordId = formData.get("recordId");
+
+      if (!doctorCode) {
+        toastr.warning("Vui lòng chọn một bác sĩ.");
+        grantAccessBtn.disabled = false;
+        grantAccessBtn.innerText = 'Cấp quyền';
+        return;
+      }
+      
+      const success = await grantAccessToDoctor(patientCode, recordCode, doctorCode);
+
+      if (success) {
+        toastr.success("Giao dịch Blockchain thành công! Đang lưu vào hệ thống...");
+        try {
+            const response = await fetch("/medical-record/grant-access", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ doctorCode, recordCode, patientCode, recordId }),
+            });
+            const result = await response.json();
+            if (result.success) {
+                toastr.success(result.message);
+                window.location.reload();
+            } else {
+                toastr.error(result.message);
+                grantAccessBtn.disabled = false;
+                grantAccessBtn.innerText = 'Cấp quyền';
+            }
+        } catch (dbError) {
+            console.error("Error updating database after blockchain grant:", dbError);
+            toastr.error("Lỗi khi cập nhật cơ sở dữ liệu sau giao dịch blockchain.");
+            grantAccessBtn.disabled = false;
+            grantAccessBtn.innerText = 'Cấp quyền';
+        }
+      } else {
+        toastr.error("Không thể hoàn tất việc cấp quyền. Vui lòng thử lại.");
+        grantAccessBtn.disabled = false;
+        grantAccessBtn.innerText = 'Cấp quyền';
+      }
+    });
+  
+
+    revokeAccessButtons.forEach(button => {
+      button.addEventListener("click", async function () {
+        const patientCode = this.dataset.patientCode;
+        const recordCode = this.dataset.recordCode;
+        const doctorCode = this.dataset.doctorCode;
+        const recordId = this.dataset.recordId;
+
+        this.disabled = true;
+        const originalText = this.innerText;
+        this.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Đang xử lý...';
+
+        const success = await revokeAccessFromDoctor(patientCode, recordCode, doctorCode);
+
+        if (success) {
+          toastr.success("Giao dịch Blockchain thành công! Đang cập nhật hệ thống...");
+          try {
+            const response = await fetch("/medical-record/revoke-access", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({ doctorCode, recordCode, patientCode, recordId }),
+            });
+            const result = await response.json();
+            if (result.success) {
+              toastr.success(result.message);
+              window.location.reload();
+            } else {
+              toastr.error(result.message);
+              this.disabled = false;
+              this.innerText = originalText;
+            }
+          } catch (dbError) {
+            console.error("Error updating database after blockchain revoke:", dbError);
+            toastr.error("Lỗi khi cập nhật cơ sở dữ liệu sau giao dịch blockchain.");
+            this.disabled = false;
+            this.innerText = originalText;
+          }
+        } else {
+          toastr.error("Không thể hoàn tất việc thu hồi quyền. Vui lòng thử lại.");
+          this.disabled = false;
+          this.innerText = originalText;
+        }
+      });
+    });
+});
+</script>
 
 <%- include('./partials/footer') %>

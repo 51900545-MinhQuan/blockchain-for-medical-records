@@ -5,9 +5,11 @@
     <div class="page-header">
       <div class="page-block">
         <div class="row align-items-center">
-          <div class="col-md-12">
-            <div class="page-header-title">
-              <h5 class="m-b-10">Chi tiết bệnh án: <%= record.recordCode %></h5>
+          <div class="col-md-8">
+            <div class="page-header-title ">
+              <h5 class="m-b-10">
+                Chi tiết bệnh án: <%= record.recordCode %>
+              </h5>
             </div>
             <ul class="breadcrumb">
               <li class="breadcrumb-item">
@@ -18,6 +20,13 @@
               </li>
               <li class="breadcrumb-item"><a>Chi tiết bệnh án</a></li>
             </ul>
+          </div>
+          <div class="col-md-4 text-right">
+            <a
+              href="/doctor/medical-records/edit/<%= record._id %>"
+              class="btn btn-primary"
+              ><i class="feather icon-edit mr-2"></i>Chỉnh sửa bệnh án</a
+            >
           </div>
         </div>
       </div>
@@ -177,5 +186,6 @@
     </div>
   </div>
 </div>
+
 
 <%- include('./partials/footer'); -%>

@@ -98,8 +98,101 @@
             </form>
           </div>
         </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h5>Kết nối ví Blockchain</h5>
+          </div>
+          <div class="card-body">
+            <div class="form-group">
+              <label>Địa chỉ ví của bạn</label>
+              <div class="input-group">
+                <input
+                  type="text"
+                  class="form-control"
+                  id="walletAddress"
+                  value="<%= user.walletAddress || 'Chưa kết nối' %>"
+                  readonly
+                />
+                <div class="input-group-append">
+                  <% if (!user.walletAddress) { %>
+                  <button
+                    class="btn btn-success"
+                    type="button"
+                    id="connectWalletBtn"
+                    <% if (!hasLinkedPatient) { %>
+                      disabled
+                      class="btn btn-success disabled"
+                      title="Vui lòng liên kết hồ sơ bệnh nhân trước khi kết nối ví."
+                    <% } %>
+                  >
+                    <i class="feather icon-link"></i> Kết nối ví
+                  </button>
+                  <% } %>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
 </div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.15.0/ethers.umd.min.js"></script>
+<script>
+    const CONTRACT_ADDR = "<%= process.env.CONTRACT_ADDR %>";
+    const POLYGON_CHAIN_ID = "<%= process.env.POLYGON_CHAIN_ID %>";
+    const RPC_URL = "<%= process.env.RPC_URL %>";
+</script>
+<script src="/assets/js/blockchain-client.js"></script>
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    const connectWalletBtn = document.getElementById("connectWalletBtn");
+    if (connectWalletBtn) {
+      const originalBtnHTML = connectWalletBtn.innerHTML;
+
+      connectWalletBtn.addEventListener("click", async () => {
+        connectWalletBtn.disabled = true;
+        connectWalletBtn.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Đang kết nối...`;
+
+        try {
+          const { address: walletAddress } = await connectWallet();
+          if (walletAddress) {
+            fetch("/profile/connect-wallet", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ walletAddress }),
+            })
+              .then((res) => res.json())
+              .then((data) => {
+                if (data.success) {
+                  toastr.success("Kết nối ví thành công!");
+                  document.getElementById("walletAddress").value = data.walletAddress;
+                  setTimeout(() => window.location.reload(), 1500);
+                } else {
+                  toastr.error(data.message || "Lỗi khi lưu địa chỉ ví.");
+                  connectWalletBtn.disabled = false;
+                  connectWalletBtn.innerHTML = originalBtnHTML;
+                }
+              })
+              .catch(() => {
+                toastr.error("Lỗi mạng khi lưu địa chỉ ví.");
+                connectWalletBtn.disabled = false;
+                connectWalletBtn.innerHTML = originalBtnHTML;
+              });
+          } else {
+            connectWalletBtn.disabled = false;
+            connectWalletBtn.innerHTML = originalBtnHTML;
+          }
+        } catch (error) {
+          console.error("Lỗi khi kết nối ví:", error);
+          toastr.error("Đã xảy ra lỗi khi kết nối ví.");
+          connectWalletBtn.disabled = false;
+          connectWalletBtn.innerHTML = originalBtnHTML;
+        }
+      });
+    }
+  });
+</script>
 <%- include('./partials/footer'); -%>

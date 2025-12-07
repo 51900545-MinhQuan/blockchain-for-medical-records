@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <title>Trang Administrator</title>
+    <title><%= typeof title !== 'undefined' ? title : 'Trang Administrator' %></title>
     <meta charset="utf-8" />
     <meta
       name="viewport"
@@ -87,5 +87,18 @@
       </div>
     </header>
     <!-- [ Header ] end -->
+     <script src="/assets/js/account-change.js"></script>
+    <script>
+      const clientUser = <%- JSON.stringify(user || null) %>;
+
+      const hasWallet = clientUser && clientUser.walletAddress;
+
+      if (hasWallet) {
+        // console.log("Header: user có ví liên kết");
+        listenForAccountChange('<%= user.walletAddress %>');
+      } //else {
+      //   console.log("Header: user không có ví liên kết");
+      // }
+    </script>
   </body>
 </html>

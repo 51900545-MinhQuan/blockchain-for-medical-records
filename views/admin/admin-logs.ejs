@@ -1,0 +1,170 @@
+<%- include('./partials/header') %>
+
+<style>
+  .nav-pills .nav-link {
+    color: #555;
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    margin-right: 5px;
+    transition: all 0.3s ease-in-out;
+  }
+  .nav-pills .nav-link.active,
+  .nav-pills .show > .nav-link {
+    color: #fff;
+    background-color: #5867dd;
+    border-color: #5867dd;
+  }
+  .nav-pills .nav-link:hover:not(.active) {
+    background-color: #e9ecef;
+    border-color: #ced4da;
+  }
+</style>
+
+<div class="pcoded-main-container">
+  <div class="pcoded-content">
+    <div class="page-header">
+      <div class="page-block">
+        <div class="row align-items-center">
+          <div class="col-md-12">
+            <div class="page-header-title">
+              <h5 class="m-b-10"><%= title %></h5>
+            </div>
+            <ul class="breadcrumb">
+              <li class="breadcrumb-item">
+                <a href="/admin"><i class="feather icon-home"></i></a>
+              </li>
+              <li class="breadcrumb-item"><a><%= title %></a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="col-sm-12">
+        <div class="card">
+          <div class="card-body">
+            <ul class="nav nav-pills mb-4">
+              <li class="nav-item">
+                <a
+                  class="nav-link <%= currentType === 'all' ? 'active' : '' %>"
+                  href="/admin/logs"
+                  >Tất cả</a
+                >
+              </li>
+              <li class="nav-item">
+                <a
+                  class="nav-link <%= currentType === 'RecordAdded' ? 'active' : '' %>"
+                  href="/admin/logs?type=RecordAdded"
+                  >Thêm bệnh án</a
+                >
+              </li>
+              <li class="nav-item">
+                <a
+                  class="nav-link <%= currentType === 'RecordUpdated' ? 'active' : '' %>"
+                  href="/admin/logs?type=RecordUpdated"
+                  >Chỉnh sửa bệnh án</a
+                >
+              </li>
+              <li class="nav-item">
+                <a
+                  class="nav-link <%= currentType === 'AccessGranted' ? 'active' : '' %>"
+                  href="/admin/logs?type=AccessGranted"
+                  >Cấp quyền truy cập bệnh án</a
+                >
+              </li>
+              <li class="nav-item">
+                <a
+                  class="nav-link <%= currentType === 'AccessRevoked' ? 'active' : '' %>"
+                  href="/admin/logs?type=AccessRevoked"
+                  >Thu hồi quyền truy cập bệnh án</a
+                >
+              </li>
+            </ul>
+
+            <div class="table-responsive">
+              <table class="table table-bordered table-striped" id="dataTable">
+                <thead>
+                  <tr>
+                    <th>Sự kiện</th>
+                    <th>Chi tiết</th>
+                    <th>Thời gian</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <% if (logs.length > 0) { %> <% logs.forEach(log => { %>
+                  <tr>
+                    <td><span class="font-weight-bold"><%= log.event %></span></td>
+                    <td>
+                      <pre
+                        style="
+                          white-space: pre-wrap;
+                          word-break: break-all;
+                          padding: 10px;
+                          border-radius: 5px;
+                        "
+                      ><%
+                        const displayData = {};
+                        for (const key in log.data) {
+                          if (key !== 'timestamp') {
+                            displayData[key] = log.data[key];
+                          }
+                        }
+                      %><%= JSON.stringify(displayData, null, 2) %></pre>
+                    </td>
+                    <td>
+                      <%= log.data.timestamp %>
+                    </td>
+                  </tr>
+                  <% }) %> <% } else { %>
+                  <tr>
+                    <td colspan="3" class="text-center">Không có log nào.</td>
+                  </tr>
+                  <% } %>
+                </tbody>
+              </table>
+            </div>
+
+            <% if (totalPages > 1) { %>
+            <nav aria-label="Page navigation">
+              <ul class="pagination justify-content-center">
+                <% if (currentPage > 1) { %>
+                <li class="page-item">
+                  <a
+                    class="page-link"
+                    href="/admin/logs?page=<%= currentPage - 1 %><% if (type) { %>&type=<%= type %><% } %>"
+                    >Previous</a
+                  >
+                </li>
+                <% } %> <% for(let i = 1; i <= totalPages; i++) { %>
+                <li
+                  class="page-item <%= i === currentPage ? 'active' : '' %>"
+                >
+                  <a
+                    class="page-link"
+                    href="/admin/logs?page=<%= i %><% if (type) { %>&type=<%= type %><% } %>"
+                    ><%= i %></a
+                  >
+                </li>
+                <% } %> <% if (currentPage < totalPages) { %>
+                <li class="page-item">
+                  <a
+                    class="page-link"
+                    href="/admin/logs?page=<%= currentPage + 1 %><% if (type) { %>&type=<%= type %><% } %>"
+                    >Next</a
+                  >
+                </li>
+                <% } %>
+              </ul>
+            </nav>
+            <% } %>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<%- include('./partials/footer') %>
+
+

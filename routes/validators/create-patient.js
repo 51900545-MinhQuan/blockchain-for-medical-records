@@ -35,29 +35,50 @@ const CreatePatientValidator = [
       return true;
     }),
 
-  check("phone")
-    .exists()
-    .withMessage("Số điện thoại là trường bắt buộc.")
-    .notEmpty()
-    .withMessage("Vui lòng nhập số điện thoại.")
-    .isLength({ min: 10, max: 11 })
-    .withMessage("Số điện thoại phải có từ 10 đến 11 chữ số."),
-
   check("gender")
     .exists()
     .withMessage("Giới tính là trường bắt buộc.")
     .notEmpty()
     .withMessage("Vui lòng chọn giới tính."),
 
-  // Optional fields
-  check("address").optional(),
-  check("identificationNumber").optional(),
-  check("guardianName").optional(),
-  check("guardianPhone").optional(),
-  check("guardianIDNumber").optional(),
-  check("bloodType").optional(),
-  check("allergies").optional(),
-  check("chronicDiseases").optional(),
+  check("phone")
+    .optional({ checkFalsy: true })
+    .isLength({ min: 10, max: 11 })
+    .withMessage("Số điện thoại phải từ 10 đến 11 chữ số."),
+
+  check("identificationNumber")
+    .optional({ checkFalsy: true })
+    .isNumeric()
+    .withMessage("CMND/CCCD phải là số.")
+    .custom((value) => {
+      if (value.length !== 9 && value.length !== 12) {
+        throw new Error("CMND/CCCD phải có 9 hoặc 12 chữ số.");
+      }
+      return true;
+    }),
+
+  check("guardianPhone")
+    .optional({ checkFalsy: true })
+    .isMobilePhone("vi-VN")
+    .withMessage("Số điện thoại người giám hộ không hợp lệ."),
+
+  check("guardianIDNumber")
+    .optional({ checkFalsy: true })
+    .isNumeric()
+    .withMessage("CMND/CCCD người giám hộ phải là số.")
+    .custom((value) => {
+      if (value.length !== 9 && value.length !== 12) {
+        throw new Error("CMND/CCCD người giám hộ phải có 9 hoặc 12 chữ số.");
+      }
+      return true;
+    }),
+
+  // Other optional text fields with no specific format validation
+  check("address").optional({ checkFalsy: true }),
+  check("guardianName").optional({ checkFalsy: true }),
+  check("bloodType").optional({ checkFalsy: true }),
+  check("allergies").optional({ checkFalsy: true }),
+  check("chronicDiseases").optional({ checkFalsy: true }),
 ];
 
 module.exports = CreatePatientValidator;

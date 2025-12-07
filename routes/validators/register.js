@@ -72,10 +72,8 @@ module.exports = [
     )
     .notEmpty()
     .withMessage("Vui lòng nhập số điện thoại")
-    .isLength({ min: 10 })
-    .withMessage("Số điện thoại phải tối thiểu 10 chữ số")
-    .isLength({ max: 11 })
-    .withMessage("Số điện thoại phải tối đa 11 chữ số"),
+    .isLength({ min: 10 , max: 11 })
+    .withMessage("Số điện thoại phải có từ 10 đến 11 chữ số"),
   check("address")
     .exists()
     .withMessage(

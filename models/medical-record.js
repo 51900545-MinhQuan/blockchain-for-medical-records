@@ -3,7 +3,7 @@ const mongoose = require("mongoose");
 const medicalRecordSchema = new mongoose.Schema(
   {
     // Mã bệnh án duy nhất MRYYYYMMDD-ID (vd: MR20251013-00001)
-    recordCode: { type: String, unique: true, sparse: true },
+    recordCode: { type: String, unique: true, sparse: true, trim: true },
 
     // Liên kết bệnh nhân
     patientID: {
@@ -21,10 +21,10 @@ const medicalRecordSchema = new mongoose.Schema(
 
     // Thông tin khám bệnh
     visitDate: { type: Date, default: Date.now }, // Ngày khám
-    reasonForVisit: String, // Lý do đến khám
-    symptoms: [String], // Triệu chứng bệnh nhân trình bày
-    diagnosis: String, // Chẩn đoán
-    notes: String, // Ghi chú thêm
+    reasonForVisit: { type: String, trim: true }, // Lý do đến khám
+    symptoms: [{ type: String, trim: true }], // Triệu chứng bệnh nhân trình bày
+    diagnosis: { type: String, trim: true }, // Chẩn đoán
+    notes: { type: String, trim: true }, // Ghi chú thêm
 
     // Thông tin y tế tại thời điểm khám
     vitalSigns: {
@@ -38,19 +38,23 @@ const medicalRecordSchema = new mongoose.Schema(
     // Điều trị & chỉ định
     prescribedMedications: [
       {
-        name: String, // Tên thuốc
-        dosage: String, // Liều lượng
-        frequency: String, // Tần suất sử dụng
-        duration: String, // Thời gian sử dụng
+        name: { type: String, trim: true }, // Tên thuốc
+        dosage: { type: String, trim: true }, // Liều lượng
+        frequency: { type: String, trim: true }, // Tần suất sử dụng
+        duration: { type: String, trim: true }, // Thời gian sử dụng
       },
     ],
 
     // Tái khám
     followUpDate: Date, // Ngày hẹn tái khám
-    followUpNote: String, // Ghi chú cho lần tái khám
+    followUpNote: { type: String, trim: true }, // Ghi chú cho lần tái khám
 
     // Blockchain
-    blockchainHash: String, // Hash lưu trên blockchain (mỗi record 1 hash)
+    recordHash: String, // Hash lưu trên blockchain để đối chiếu (mỗi record 1 hash)
+    lastVerifiedHash: String, // Hash đã xác minh trước đó, dùng để so sánh khi chỉnh sửa
+
+    // Status
+    status: String, // Trạng thái bệnh án , pending: chờ blockchain, verified: đã lưu blockchain
 
     created_at: { type: Date, default: Date.now },
     updated_at: { type: Date, default: Date.now },

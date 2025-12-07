@@ -3,12 +3,14 @@ const argon2 = require("argon2");
 const { check, validationResult } = require("express-validator");
 const nodemailer = require("nodemailer");
 const crypto = require("crypto");
+const mongoose = require("mongoose");
 
 const router = express.Router();
 
 // Import Model
 const UserModel = require("../models/user");
 const PatientModel = require("../models/patient");
+const DoctorModel = require("../models/doctor");
 
 // Import Middleware
 const Auth = require("../middleware/auth");
@@ -17,6 +19,7 @@ const Auth = require("../middleware/auth");
 const RegisterValidator = require("./validators/register");
 const LoginValidator = require("./validators/login");
 const ResetPasswordValidator = require("./validators/reset-password");
+const { link } = require("fs");
 
 /*
 |------------------------------------------------------------------------------------------------------
@@ -26,12 +29,14 @@ const ResetPasswordValidator = require("./validators/reset-password");
 router.get("/login", Auth.checkLogin, async (req, res, next) => {
   try {
     res.render("auth/login", {
+      title: "Đăng nhập",
       errors: req.flash("errors"),
       email: req.flash("email"),
     });
   } catch (error) {
     return res.status(500).render("error", {
       error: {
+        title: "Lỗi",
         status: 500,
         stack: "Unable to connect to the system, please try again!",
       },
@@ -74,7 +79,21 @@ router.post("/login", LoginValidator, async (req, res, next) => {
       address: user.address,
       identificationNumber: user.identificationNumber,
       role: user.role,
+      linkedDoctorCode: user.linkedDoctorCode,
+      linkedPatientCode: user.linkedPatientCode,
+      walletAddress: user.walletAddress,
     };
+
+    // uncomment khi cần liên kết mã bác sĩ bị thiếu
+    // if (user.role === 2 && !user.linkedDoctorCode) {
+    //   const doctorProfile = await DoctorModel.findOne({ userID: user._id });
+    //   if (doctorProfile && doctorProfile.doctorCode) {
+    //     await UserModel.updateOne(
+    //       { _id: user._id },
+    //       { linkedDoctorCode: doctorProfile.doctorCode }
+    //     );
+    //   }
+    // }
 
     if (req.session.user.role == 0) {
       return res.redirect("/admin");
@@ -97,12 +116,37 @@ router.post("/login", LoginValidator, async (req, res, next) => {
 
 /*
 |------------------------------------------------------------------------------------------------------
+| KIỂM TRA VÀ LẤY ĐỊA CHỈ VÍ CỦA NGƯỜI DÙNG
+|------------------------------------------------------------------------------------------------------
+*/
+router.post("/get-wallet-address", async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Email is required." });
+    }
+    const user = await UserModel.findOne({ email: email });
+    res.json({
+      success: true,
+      walletAddress: user ? user.walletAddress : null,
+    });
+  } catch (error) {
+    console.error("Error fetching wallet address:", error);
+    res.status(500).json({ success: false, message: "Server error." });
+  }
+});
+
+/*
+|------------------------------------------------------------------------------------------------------
 | ĐĂNG KÝ TÀI KHOẢN NGƯỜI DÙNG
 |------------------------------------------------------------------------------------------------------
 */
 router.get("/register", Auth.checkLogin, async (req, res, next) => {
   try {
     res.render("auth/register", {
+      title: "Đăng ký",
       errors: req.flash("errors"),
       success: req.flash("success"),
       oldData: req.flash("oldData")[0] || {},
@@ -110,6 +154,7 @@ router.get("/register", Auth.checkLogin, async (req, res, next) => {
   } catch (error) {
     return res.status(500).render("error", {
       error: {
+        title: "Lỗi",
         status: 500,
         stack: "Unable to connect to the system, please try again!",
       },
@@ -129,9 +174,9 @@ router.post("/register", RegisterValidator, async (req, res, next) => {
       birthday,
       phone,
       address,
-      role,
       identificationNumber,
     } = req.body;
+    const role = req.body.role ? parseInt(req.body.role, 10) : 1;
 
     if (result.errors.length !== 0) {
       req.flash("errors", result.errors[0].msg);
@@ -163,31 +208,122 @@ router.post("/register", RegisterValidator, async (req, res, next) => {
       req.flash("oldData", req.body);
       return res.redirect("/auth/register");
     }
-
-    const hashed = await argon2.hash(password);
-    // Nếu role là 2 (bác sĩ) thì gán role = 2, không thì (bệnh nhân) gán role = 1
-    const userRole = role === "2" ? 2 : 1;
-    const newUser = await UserModel.create({
+    const newUser = new UserModel({
       fullname,
       email,
       birthday,
       phone,
       address,
       identificationNumber,
-      password: hashed,
-      role: userRole,
+      password: await argon2.hash(password),
+      role,
     });
+    await newUser.save();
 
-    req.flash("success", "Đăng ký tài khoản thành công!");
-    return res.redirect("/auth/login");
+    // Nếu là bac sĩ, chuyển đến trang đăng ký thông tin bác sĩ
+    if (role === 2) {
+      req.session.pendingDoctorRegistration = newUser._id;
+      return res.redirect("/auth/register-doctor");
+    } else {
+      req.flash("success", "Đăng ký tài khoản thành công!");
+      return res.redirect("/auth/login");
+    }
   } catch (error) {
     return res.status(500).render("error", {
       error: {
+        title: "Lỗi",
         status: 500,
         stack: "Unable to connect to the system, please try again!",
       },
       message: "Connection errors",
     });
+  }
+});
+
+/*
+|------------------------------------------------------------------------------------------------------
+| ĐĂNG KÝ THÔNG TIN BÁC SĨ
+|------------------------------------------------------------------------------------------------------
+*/
+router.get("/register-doctor", (req, res) => {
+  if (!req.session.pendingDoctorRegistration) {
+    return res.redirect("/auth/register");
+  }
+  res.render("auth/register-doctor", {
+    title: "Xác thực thông tin bác sĩ",
+    errors: req.flash("errors"),
+    oldData: req.flash("oldData")[0] || {},
+  });
+});
+
+router.post("/register-doctor", async (req, res) => {
+  const userID = req.session.pendingDoctorRegistration;
+  if (!userID) {
+    return res.redirect("/auth/register");
+  }
+
+  const { specialization, licenseNumber } = req.body;
+
+  try {
+    if (!specialization || !licenseNumber) {
+      req.flash("errors", "Vui lòng điền đầy đủ thông tin.");
+      req.flash("oldData", req.body);
+      return res.redirect("/auth/register-doctor");
+    }
+
+    const existingDoctor = await DoctorModel.findOne({ licenseNumber });
+    if (existingDoctor) {
+      req.flash("errors", "Số giấy phép hành nghề đã tồn tại.");
+      req.flash("oldData", req.body);
+      return res.redirect("/auth/register-doctor");
+    }
+
+    // Tao mã bác sĩ định dạng DOC-0000000X
+    let newDoctorCode = "";
+    let attempts = 0;
+    const MAX_ATTEMPTS = 5;
+
+    while (attempts < MAX_ATTEMPTS) {
+      const lastDoctor = await DoctorModel.findOne().sort({ doctorCode: -1 });
+      let nextCodeNumber = 1;
+      if (lastDoctor && lastDoctor.doctorCode) {
+        const lastCodeNumber = parseInt(
+          lastDoctor.doctorCode.split("-")[1],
+          10
+        );
+        nextCodeNumber = lastCodeNumber + 1;
+      }
+      newDoctorCode = "DOC-" + String(nextCodeNumber).padStart(8, "0");
+
+      const existingDoctorWithCode = await DoctorModel.findOne({
+        doctorCode: newDoctorCode,
+      });
+      if (!existingDoctorWithCode) break;
+      attempts++;
+    }
+
+    await DoctorModel.create({
+      doctorCode: newDoctorCode,
+      userID,
+      specialization,
+      licenseNumber,
+    });
+
+    const updatedUser = await UserModel.findByIdAndUpdate(userID, {
+      linkedDoctorCode: newDoctorCode,
+    });
+
+    // Xóa session tạm thời
+    delete req.session.pendingDoctorRegistration;
+    req.flash("success", "Đăng ký tài khoản bác sĩ thành công!");
+    return res.redirect("/auth/login");
+  } catch (error) {
+    console.error("Doctor registration error:", error);
+    req.flash("errors", "Đã có lỗi xảy ra, vui lòng thử lại.");
+    req.flash("oldData", req.body);
+    // Nếu có lỗi xảy ra, xóa user đã tạo
+    await UserModel.findByIdAndDelete(userID);
+    return res.redirect("/auth/register");
   }
 });
 
@@ -199,12 +335,14 @@ router.post("/register", RegisterValidator, async (req, res, next) => {
 router.get("/reset-password", (req, res, next) => {
   try {
     res.render("auth/reset-password", {
+      title: "Đặt lại mật khẩu",
       errors: req.flash("errors"),
       email: req.flash("email"),
     });
   } catch (error) {
     return res.status(500).render("error", {
       error: {
+        title: "Lỗi",
         status: 500,
         stack: "Unable to connect to the system, please try again!",
       },
@@ -278,6 +416,7 @@ router.post(
     } catch (error) {
       return res.status(500).render("error", {
         error: { status: 500, stack: "Tạm thời bỏ qua chức năng này" },
+        title: "Lỗi",
         message: "Connection errors",
       });
     }
@@ -297,6 +436,39 @@ router.get("/logout", (req, res, next) => {
     }
     res.redirect("/auth/login");
   });
+});
+
+/*
+|------------------------------------------------------------------------------------------------------
+| XÓA TOÀN BỘ DATABASE (CHỈ DÙNG CHO MỤC ĐÍCH TEST)
+|------------------------------------------------------------------------------------------------------
+*/
+router.post("/delete-all-collections", async (req, res) => {
+  try {
+    const collections = await mongoose.connection.db.collections();
+    const collectionsToDrop = [];
+
+    for (const collection of collections) {
+      if (
+        !collection.collectionName.startsWith("system.") &&
+        collection.collectionName !== "sessions"
+      ) {
+        collectionsToDrop.push(collection.drop());
+      }
+    }
+
+    await Promise.all(collectionsToDrop);
+
+    res.json({
+      success: true,
+      message: "All collections deleted successfully.",
+    });
+  } catch (error) {
+    console.error("Error deleting collections:", error);
+    res
+      .status(500)
+      .json({ success: false, message: "Failed to delete collections." });
+  }
 });
 
 module.exports = router;

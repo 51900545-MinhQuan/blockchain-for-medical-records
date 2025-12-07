@@ -9,9 +9,9 @@
     margin: 0;
   }
   /* Firefox */
-  input[type="number"] {
+  /* input[type="number"] {
     -moz-appearance: textfield;
-  }
+  } */
 </style>
 
 <div class="pcoded-main-container">
@@ -38,7 +38,7 @@
       <div class="col-sm-12">
         <div class="card">
           <div class="card-body">
-            <form method="POST" action="/doctor/medical-records/create">
+            <form method="POST" action="/doctor/medical-records/create" id="create-record-form">
               <div class="row">
                 <div class="col-md-6">
                   <div class="form-group">
@@ -272,10 +272,10 @@
         </div>
       </div>
     </div>
+  
+    
     <script>
-      document
-        .getElementById("add-medication")
-        .addEventListener("click", function () {
+      document.getElementById("add-medication").addEventListener("click", function () {
           const medicationList = document.getElementById("medication-list");
           const lastRow = medicationList.querySelector(
             ".medication-row:last-child"
@@ -283,8 +283,7 @@
           const lastMedicationNameInput = lastRow.querySelector(
             'input[name="medication-name[]"]'
           );
-
-          // Prevent adding a new row if the last one is empty
+          
           if (
             lastMedicationNameInput &&
             lastMedicationNameInput.value.trim() === ""
@@ -314,10 +313,7 @@
         });
       }
 
-      // Add event listener for remove buttons using event delegation
-      document
-        .getElementById("medication-list")
-        .addEventListener("click", function (event) {
+      document.getElementById("medication-list").addEventListener("click", function (event) {
           if (event.target.classList.contains("remove-medication")) {
             event.preventDefault();
             const row = event.target.closest(".medication-row");
@@ -326,10 +322,10 @@
           }
         });
 
-      // Initial check on page load
       document.addEventListener("DOMContentLoaded", function () {
         updateRemoveButtons();
       });
+
     </script>
   </div>
 </div>

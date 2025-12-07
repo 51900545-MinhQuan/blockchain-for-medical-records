@@ -1,0 +1,28 @@
+/**
+ * @param {string} linkedWalletAddress
+ */
+function listenForAccountChange(linkedWalletAddress) {
+
+  if (!linkedWalletAddress || typeof window.ethereum === "undefined") {
+    return;
+  }
+
+  const linkedWallet = linkedWalletAddress.toLowerCase();
+
+  window.ethereum.on("accountsChanged", function (accounts) {
+    const currentAccount = accounts[0]?.toLowerCase();
+
+    console.log(
+      "Detected account change. Current account:",
+      currentAccount,
+      "Linked wallet:",
+      linkedWallet
+    );
+
+    // Nếu tài khoản thay đổi khác với tài khoản đã liên kết, đăng xuất người dùng
+    if (!currentAccount || currentAccount !== linkedWallet) {
+      toastr.warning("Phát hiện thay đổi ví. Hệ thống sẽ tự động đăng xuất.");
+      setTimeout(() => (window.location.href = "/auth/logout"), 2000);
+    }
+  });
+}
