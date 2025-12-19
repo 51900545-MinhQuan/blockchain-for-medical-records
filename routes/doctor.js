@@ -42,7 +42,7 @@ router.get("/", function (req, res, next) {
       title: "Lỗi",
       error: {
         status: 500,
-        stack: "Unable to connect to the system, please try again!",
+        stack: "Không thể kết nối đến hệ thống, vui lòng thử lại!",
       },
       message: "Connection errors",
     });
@@ -108,7 +108,7 @@ router.get("/patients", async (req, res) => {
 
 /*
 |------------------------------------------------------------------------------------------------------
-| TAO HỒ SƠ BỆNH NHÂN
+| TẠO HỒ SƠ BỆNH NHÂN
 |------------------------------------------------------------------------------------------------------
 */
 
@@ -126,7 +126,7 @@ router.get("/patients/create", requireWallet, (req, res, next) => {
       title: "Lỗi",
       error: {
         status: 500,
-        stack: "Unable to connect to the system, please try again!",
+        stack: "Không thể kết nối đến hệ thống, vui lòng thử lại!",
       },
       message: "Connection errors",
     });
@@ -331,23 +331,14 @@ router.get("/medical-record/:id", async (req, res) => {
       return res.redirect("/doctor/patients");
     }
 
-    //double check quyền truy cập bệnh án
-    // const hasAccessInDB = doctor.accessibleRecords.some(
-    //   (ar) => ar.recordCode === record.recordCode
-    // );
-
-    // if (!hasAccessInDB) {
-    //   req.flash("errors", "Bạn không có quyền truy cập bệnh án này.");
-    //   return res.redirect("doctor/patients");
-    // }
-
-    // Kiểm tra xem bệnh án đã được xác nhận trên blockchain chưa
+    // Kiểm tra trạng thái xác nhận của bệnh án
     if (record.status !== "Verified") {
       req.flash(
         "errors",
         "Bệnh án này chưa được xác nhận trên blockchain. Vui lòng xác nhận trước khi xem chi tiết."
       );
 
+      // Nếu chưa có lastVerifiedHash thì là tạo mới
       if (!record.lastVerifiedHash) {
         console.log("redirect to confirm create");
         return res.redirect(
@@ -360,6 +351,7 @@ router.get("/medical-record/:id", async (req, res) => {
       );
     }
 
+    // Kiểm tra xem bệnh án đã được xác nhận trên blockchain chưa
     const hasAccessOnChain = await checkRecordAccess(
       record.patientID.patientCode,
       record.recordCode,
@@ -670,7 +662,7 @@ router.get("/medical-records/confirm/:id", requireWallet, async (req, res) => {
       errors: req.flash("errors"),
     });
   } catch (error) {
-    console.error("Error showing confirmation page:", error);
+    console.error("Lỗi khi hiển thị trang xác nhận:", error);
     req.flash("errors", "Có lỗi xảy ra khi hiển thị trang xác nhận.");
     res.redirect("/doctor/records");
   }
@@ -891,7 +883,6 @@ router.post("/medical-records/update-status", async (req, res) => {
 */
 
 router.get("/profile", function (req, res, next) {
-  // console.log(req.session.user.walletAddress);
   try {
     res.render("doctor/profile", {
       title: "Thông tin tài khoản",
@@ -904,7 +895,7 @@ router.get("/profile", function (req, res, next) {
       title: "Lỗi",
       error: {
         status: 500,
-        stack: "Unable to connect to the system, please try again!",
+        stack: "Không thể kết nối đến hệ thống, vui lòng thử lại!",
       },
       message: "Connection errors",
     });
@@ -958,7 +949,6 @@ router.post("/profile/connect-wallet", async (req, res) => {
         .json({ success: false, message: "Không tìm thấy người dùng." });
     }
 
-    // console.log(doctor.doctorCode, walletAddress);
     await assignDoctor(doctor.doctorCode, walletAddress);
 
     req.session.user.walletAddress = updatedUser.walletAddress;
@@ -1009,7 +999,7 @@ router.post(
         title: "Lỗi",
         error: {
           status: 500,
-          stack: "Unable to connect to the system, please try again!",
+          stack: "Không thể kết nối đến hệ thống, vui lòng thử lại!",
         },
         message: "Connection errors",
       });
@@ -1036,7 +1026,7 @@ router.get("/change-password", function (req, res, next) {
       title: "Lỗi",
       error: {
         status: 500,
-        stack: "Unable to connect to the system, please try again!",
+        stack: "Không thể kết nối đến hệ thống, vui lòng thử lại!",
       },
       message: "Connection errors",
     });
@@ -1085,7 +1075,7 @@ router.post(
         title: "Lỗi",
         error: {
           status: 500,
-          stack: "Unable to connect to the system, please try again!",
+          stack: "Không thể kết nối đến hệ thống, vui lòng thử lại!",
         },
         message: "Connection errors",
       });

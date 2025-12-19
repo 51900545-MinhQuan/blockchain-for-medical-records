@@ -26,7 +26,7 @@ router.get("/", async (req, res, next) => {
       title: "Lỗi",
       error: {
         status: 500,
-        stack: "Unable to connect to the system, please try again!",
+        stack: "Không thể kết nối đến hệ thống, vui lòng thử lại!",
       },
       message: "Connection errors",
     });
@@ -91,12 +91,12 @@ router.get("/logs", async (req, res) => {
       success: req.flash("success"),
     });
   } catch (error) {
-    console.error("Error fetching admin logs:", error);
+    console.error("Lỗi khi lấy logs admin:", error);
     return res.status(500).render("error", {
       title: "Lỗi",
       error: {
         status: 500,
-        stack: "Unable to connect to the system, please try again!",
+        stack: "Không thể kết nối đến hệ thống, vui lòng thử lại!",
       },
       message: "Connection errors",
     });

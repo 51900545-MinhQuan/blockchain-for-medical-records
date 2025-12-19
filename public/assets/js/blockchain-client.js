@@ -127,7 +127,6 @@ async function grantAccessToDoctor(patientCode, recordCode, doctorCode) {
       bytesDoctorCode
     );
 
-    console.log("Grant access transaction sent:", tx.hash);
     toastr.info("Đang chờ xác nhận giao dịch từ Blockchain...", "Đang xử lý");
 
     await tx.wait();
@@ -172,7 +171,6 @@ async function revokeAccessFromDoctor(patientCode, recordCode, doctorCode) {
       bytesDoctorCode
     );
 
-    console.log("Revoke access transaction sent:", tx.hash);
     toastr.info("Đang chờ xác nhận giao dịch từ Blockchain...", "Đang xử lý");
 
     await tx.wait();
@@ -220,7 +218,7 @@ async function addRecordByDoctor(
       bytesPatientCode,
       recordHash
     );
-    console.log("Add record transaction sent:", tx.hash);
+
     toastr.info("Đang chờ xác nhận giao dịch từ Blockchain...", "Đang xử lý");
 
     await tx.wait();
@@ -285,7 +283,6 @@ async function updateRecordByDoctor(
       newRecordHash
     );
 
-    console.log("Update record transaction sent:", tx.hash);
     toastr.info("Đang chờ xác nhận cập nhật từ Blockchain...", "Đang xử lý");
 
     await tx.wait();

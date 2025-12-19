@@ -45,7 +45,7 @@ router.get("/", function (req, res, next) {
       title: "Lỗi",
       error: {
         status: 500,
-        stack: "Unable to connect to the system, please try again!",
+        stack: "Không thể kết nối đến hệ thống, vui lòng thử lại!",
       },
       message: "Connection errors",
     });
@@ -135,7 +135,13 @@ router.get("/medical-history", async (req, res) => {
 router.get("/medical-record/:id", async (req, res) => {
   try {
     const record = await MedicalRecordModel.findById(req.params.id)
-      .populate("patientID")
+      .populate({
+        path: "patientID",
+        populate: {
+          path: "linkedUserID",
+          model: UserModel,
+        },
+      })
       .populate("doctorID", "fullname linkedDoctorCode");
 
     if (!record) {
@@ -145,7 +151,7 @@ router.get("/medical-record/:id", async (req, res) => {
 
     const isThePatient =
       record.patientID.linkedUserID &&
-      record.patientID.linkedUserID.toString() === req.session.user.id;
+      record.patientID.linkedUserID.id === req.session.user.id;
     const isGuardian =
       req.session.user.linkedPatientCode?.includes(
         record.patientID.patientCode
@@ -428,7 +434,7 @@ router.get("/profile", async function (req, res, next) {
       title: "Lỗi",
       error: {
         status: 500,
-        stack: "Unable to connect to the system, please try again!",
+        stack: "Không thể kết nối đến hệ thống, vui lòng thử lại!",
       },
       message: "Connection errors",
     });
@@ -472,7 +478,7 @@ router.post(
         title: "Lỗi",
         error: {
           status: 500,
-          stack: "Unable to connect to the system, please try again!",
+          stack: "Không thể kết nối đến hệ thống, vui lòng thử lại!",
         },
         message: "Connection errors",
       });
@@ -535,7 +541,7 @@ router.post("/profile/connect-wallet", async (req, res) => {
         await assignPatient(linkedPatient.patientCode, walletAddress);
       } catch (chainError) {
         console.error(
-          `Failed to assign patient ${linkedPatient.patientCode} on-chain:`,
+          `Liên kết ví trên blockchain thất bại cho bệnh nhân ${linkedPatient.patientCode}:`,
           chainError.message
         );
       }
@@ -575,7 +581,7 @@ router.get("/change-password", function (req, res, next) {
       title: "Lỗi",
       error: {
         status: 500,
-        stack: "Unable to connect to the system, please try again!",
+        stack: "Không thể kết nối đến hệ thống, vui lòng thử lại!",
       },
       message: "Connection errors",
     });
@@ -622,7 +628,7 @@ router.post(
         title: "Lỗi",
         error: {
           status: 500,
-          stack: "Unable to connect to the system, please try again!",
+          stack: "Không thể kết nối đến hệ thống, vui lòng thử lại!",
         },
         message: "Connection errors",
       });

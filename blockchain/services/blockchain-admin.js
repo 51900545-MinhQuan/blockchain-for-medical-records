@@ -26,13 +26,13 @@ async function assignDoctor(doctorCode, walletAddress) {
     const doctorCodeBytes32 = ethers.encodeBytes32String(doctorCode);
 
     console.log(
-      `Assigning doctor on-chain: Code=${doctorCode} (${doctorCodeBytes32}), Wallet=${walletAddress}`
+      `Liên kết bác sĩ trên chuỗi: Mã=${doctorCode} (${doctorCodeBytes32}), Ví=${walletAddress}`
     );
     const tx = await contract.assignDoctor(doctorCodeBytes32, walletAddress);
     return { success: true };
   } catch (error) {
     const errorMessage = error.shortMessage;
-    console.error("Error in assignDoctor transaction:", errorMessage);
+    console.error("Lỗi khi giao dịch assignDoctor:", errorMessage);
     throw error;
   }
 }
@@ -42,12 +42,12 @@ async function assignPatient(patientCode, walletAddress) {
     const patientCodeBytes32 = ethers.encodeBytes32String(patientCode);
 
     console.log(
-      `Assigning patient on-chain: Code=${patientCode} (${patientCodeBytes32}), Wallet=${walletAddress}`
+      `Liên kết bệnh nhân trên chuỗi: Mã=${patientCode} (${patientCodeBytes32}), Ví=${walletAddress}`
     );
     const tx = await contract.assignPatient(patientCodeBytes32, walletAddress);
     return { success: true };
   } catch (error) {
-    console.error("Error in assignPatient transaction:", error.shortMessage);
+    console.error("Lỗi khi giao dịch assignPatient:", error.shortMessage);
     throw error;
   }
 }
@@ -57,7 +57,7 @@ async function linkGuardianToPatient(patientCode, guardianWallet) {
     const patientCodeBytes32 = ethers.encodeBytes32String(patientCode);
 
     console.log(
-      `Linking guardian to patient on-chain: PatientCode=${patientCode} (${patientCodeBytes32}), GuardianWallet=${guardianWallet}`
+      `Liên kết người giám hộ trên chuỗi: Bệnh nhân Mã=${patientCode} (${patientCodeBytes32}), Ví người giám hộ=${guardianWallet}`
     );
     const tx = await contract.linkGuardianToPatient(
       patientCodeBytes32,
@@ -66,7 +66,7 @@ async function linkGuardianToPatient(patientCode, guardianWallet) {
     return { success: true };
   } catch (error) {
     console.error(
-      "Error in linkGuardianToPatient transaction:",
+      "Lỗi khi giao dịch linkGuardianToPatient:",
       error.shortMessage
     );
     throw error;

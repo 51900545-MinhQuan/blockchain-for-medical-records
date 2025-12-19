@@ -13,9 +13,9 @@ function listenForAccountChange(linkedWalletAddress) {
     const currentAccount = accounts[0]?.toLowerCase();
 
     console.log(
-      "Detected account change. Current account:",
+      "Phat hiện thay đổi tài khoản ví:",
       currentAccount,
-      "Linked wallet:",
+      "ví đã liên kết:",
       linkedWallet
     );
 

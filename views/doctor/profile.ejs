@@ -147,27 +147,47 @@
   document.addEventListener("DOMContentLoaded", function () {
     const connectWalletBtn = document.getElementById("connectWalletBtn");
     if (connectWalletBtn) {
+      const originalBtnHTML = connectWalletBtn.innerHTML;
+
       connectWalletBtn.addEventListener("click", async () => {
-        const { address : walletAddress } = await connectWallet();
-        if (walletAddress) {
-          // Gui địa chỉ ví về server
-          fetch("/doctor/profile/connect-wallet", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ walletAddress }),
-          })
-            .then((res) => res.json())
-            .then((data) => {
-              if (data.success) {
-                toastr.success("Kết nối ví thành công!");
-                document.getElementById("walletAddress").value =
-                  data.walletAddress;
-                setTimeout(() => window.location.reload(), 1500);
-              } else {
-                toastr.error(data.message || "Lỗi khi lưu địa chỉ ví.");
-              }
+        connectWalletBtn.disabled = true;
+        connectWalletBtn.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Đang kết nối...`;
+
+        try {
+          const { address: walletAddress } = await connectWallet();
+          if (walletAddress) {
+            // Gui địa chỉ ví về server
+            fetch("/doctor/profile/connect-wallet", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ walletAddress }),
             })
-            .catch(() => toastr.error("Lỗi mạng khi lưu địa chỉ ví."));
+              .then((res) => res.json())
+              .then((data) => {
+                if (data.success) {
+                  toastr.success("Kết nối ví thành công!");
+                  document.getElementById("walletAddress").value = data.walletAddress;
+                  setTimeout(() => window.location.reload(), 1500);
+                } else {
+                  toastr.error(data.message || "Lỗi khi lưu địa chỉ ví.");
+                  connectWalletBtn.disabled = false;
+                  connectWalletBtn.innerHTML = originalBtnHTML;
+                }
+              })
+              .catch(() => {
+                toastr.error("Lỗi mạng khi lưu địa chỉ ví.");
+                connectWalletBtn.disabled = false;
+                connectWalletBtn.innerHTML = originalBtnHTML;
+              });
+          } else {
+            connectWalletBtn.disabled = false;
+            connectWalletBtn.innerHTML = originalBtnHTML;
+          }
+        } catch (error) {
+          console.error("Lỗi khi kết nối ví:", error);
+          toastr.error("Đã xảy ra lỗi khi kết nối ví.");
+          connectWalletBtn.disabled = false;
+          connectWalletBtn.innerHTML = originalBtnHTML;
         }
       });
     }

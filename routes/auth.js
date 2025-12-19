@@ -38,7 +38,7 @@ router.get("/login", Auth.checkLogin, async (req, res, next) => {
       error: {
         title: "Lỗi",
         status: 500,
-        stack: "Unable to connect to the system, please try again!",
+        stack: "Không thể kết nối đến hệ thống, vui lòng thử lại!",
       },
       message: "Connection errors",
     });
@@ -107,7 +107,7 @@ router.post("/login", LoginValidator, async (req, res, next) => {
     return res.status(500).render("error", {
       error: {
         status: 500,
-        stack: "Unable to connect to the system, please try again!",
+        stack: "Không thể kết nối đến hệ thống, vui lòng thử lại!",
       },
       message: "Connection errors",
     });
@@ -133,7 +133,7 @@ router.post("/get-wallet-address", async (req, res) => {
       walletAddress: user ? user.walletAddress : null,
     });
   } catch (error) {
-    console.error("Error fetching wallet address:", error);
+    console.error("Lỗi khi lấy địa chỉ ví:", error);
     res.status(500).json({ success: false, message: "Server error." });
   }
 });
@@ -156,7 +156,7 @@ router.get("/register", Auth.checkLogin, async (req, res, next) => {
       error: {
         title: "Lỗi",
         status: 500,
-        stack: "Unable to connect to the system, please try again!",
+        stack: "Không thể kết nối đến hệ thống, vui lòng thử lại!",
       },
       message: "Connection errors",
     });
@@ -233,7 +233,7 @@ router.post("/register", RegisterValidator, async (req, res, next) => {
       error: {
         title: "Lỗi",
         status: 500,
-        stack: "Unable to connect to the system, please try again!",
+        stack: "Không thể kết nối đến hệ thống, vui lòng thử lại!",
       },
       message: "Connection errors",
     });
@@ -344,7 +344,7 @@ router.get("/reset-password", (req, res, next) => {
       error: {
         title: "Lỗi",
         status: 500,
-        stack: "Unable to connect to the system, please try again!",
+        stack: "Không thể kết nối đến hệ thống, vui lòng thử lại!",
       },
       message: "Connection errors",
     });

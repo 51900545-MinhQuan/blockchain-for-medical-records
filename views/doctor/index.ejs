@@ -12,7 +12,18 @@
                 <div class="row align-items-center">
                   <div class="col-md-12">
                     <div class="page-header-title">
-                      <h5 class="m-b-10">TỔNG QUAN</h5>
+                      <% if (user.walletAddress) { %>
+                      <h5 class="m-b-10">
+                        Xin chào bác sĩ <%= user.fullname %>
+                      </h5>
+                      <% } else { %>
+                      <h5 class="m-b-10">Xin chào bác sĩ <%= user.fullname %></h5>
+                      <p>
+                        Bệnh viện của chúng tôi sử dụng blockchain để
+                        <strong>quản lý và bảo mật hồ sơ bệnh án của bệnh nhân một cách an toàn và minh bạch</strong>. Để có thể sử dụng chức năng tạo hoặc chỉnh sửa hồ sơ bệnh nhân hoặc bệnh án, bạn vui lòng hãy
+                        <a href="/doctor/profile">liên kết tài khoản MetaMask thông qua trang thông tin cá nhân</a>.
+                      </p>
+                      <% } %>
                     </div>
                   </div>
                 </div>
