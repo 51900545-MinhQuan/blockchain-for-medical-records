@@ -1,0 +1,229 @@
+<%- include('./partials/header') %>
+
+<div class="pcoded-main-container">
+  <div class="pcoded-content">
+    <div class="page-header">
+      <div class="page-block">
+        <div class="row align-items-center">
+          <div class="col-md-12">
+            <div class="page-header-title">
+              <h5 class="m-b-10">Chi tiết bệnh án</h5>
+            </div>
+            <ul class="breadcrumb">
+              <li class="breadcrumb-item">
+                <a href="/admin"><i class="feather icon-home"></i></a>
+              </li>
+              <li class="breadcrumb-item">
+                <a href="/admin/records">Danh sách bệnh án</a>
+              </li>
+              <li class="breadcrumb-item"><a>Chi tiết</a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="col-sm-12">
+        <div class="card">
+          <div class="card-header">
+            <h5>Thông tin bệnh án: <%= record.recordCode %></h5>
+            <button
+              id="btnVerifyIntegrity"
+              class="btn btn-warning btn-sm float-right"
+              data-id="<%= record._id %>"
+            >
+              <i class="feather icon-shield"></i> Kiểm tra tính toàn vẹn
+            </button>
+          </div>
+          <div class="card-body">
+            <div class="row">
+              <div class="col-md-6">
+                <div class="form-group">
+                  <label class="font-weight-bold">Mã bệnh án:</label>
+                  <p><%= record.recordCode %></p>
+                </div>
+                <div class="form-group">
+                  <label class="font-weight-bold">Ngày khám:</label>
+                  <p><%= record.visitDate ? record.visitDate.toLocaleDateString('vi-VN') : '' %></p>
+                </div>
+              </div>
+              <div class="col-md-6">
+                <div class="form-group">
+                  <label class="font-weight-bold">Bác sĩ:</label>
+                  <p><%= record.doctorID ? record.doctorID.fullname : 'N/A' %> - <%= record.doctorID ? record.doctorID.linkedDoctorCode : 'N/A' %></p>
+                </div>
+                <div class="form-group">
+                  <label class="font-weight-bold">Bệnh nhân:</label>
+                  <p><%= record.patientID ? record.patientID.fullname : 'N/A' %> - <%= record.patientID ? record.patientID.patientCode : 'N/A' %></p>
+                </div>
+              </div>
+            </div>
+            <div class="row mt-3">
+                  <div class="col-12">
+                <label class="font-weight-bold">Lịch sử cập nhật:</label>
+                <ul class="list-unstyled">
+                  <% if (typeof logs !== 'undefined' && logs.length > 0) { %>
+                    <% logs.forEach(log => { %>
+                      <li>
+                        <b><%= moment(log.created_at).format("DD/MM/YYYY HH:mm:ss") %></b>: 
+                        <%= log.event === 'RecordAdded' ? 'Tạo bệnh án' : 'Chỉnh sửa bệnh án' %> 
+                        bởi 
+                        <% 
+                          let doctorDisplay = "";
+                          if (log.data && log.data.doctor) {
+                            if (typeof log.data.doctor === 'string') {
+                              doctorDisplay = log.data.doctor;
+                            } else {
+                              doctorDisplay = (log.data.doctor.fullname || '') + ' - ' + (log.data.doctor.code || log.data.doctor.doctorCode || '');
+                            }
+                          }
+                        %>
+                        <b><%= doctorDisplay %></b>
+                      </li>
+                    <% }) %>
+                  <% } else { %>
+                    <li class="text-muted font-italic">Chưa có dữ liệu lịch sử.</li>
+                  <% } %>
+                </ul>
+              </div>
+            </div>
+            <div class="row mt-4">
+                <div class="col-12">
+                    <hr />
+                    <label class="font-weight-bold"> Xác minh tính toàn vẹn (Blockchain)</label>
+                    <div class="mt-2">
+                        <small class="text-muted">Hash hiện tại của bệnh án (Off-chain):</small>
+                        <pre id="offChainHash" class="bg-light p-2 rounded text-monospace">Chưa kiểm tra</pre>
+                    </div>
+
+                    <div class="mt-2">
+                        <small class="text-muted">Hash lưu trên Blockchain (On-chain):</small>
+                        <pre id="onChainHash" class="bg-light p-2 rounded text-monospace">Chưa kiểm tra</pre>
+                    </div>
+
+                    <div id="integrityResult" class="mt-2" style="display: none;">
+                        <span id="integritySuccess" class="badge badge-success" style="display: none;">
+                            <i class="feather icon-check-circle"></i> Dữ liệu toàn vẹn
+                        </span>
+                        <span id="integrityFail" class="badge badge-danger" style="display: none;">
+                            <i class="feather icon-alert-triangle"></i> Phát hiện sai lệch dữ liệu
+                        </span>
+                    </div>
+
+                </div>
+            </div>
+            <div class="row mt-3">
+              <div class="col-12 text-center">
+                <a href="/admin/records" class="btn btn-secondary">Quay lại</a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  $(document).ready(function () {
+    const btn = $("#btnVerifyIntegrity");
+    const recordId = btn.data("id");
+    const STORAGE_KEY = "lastVerifyIntegrityClick_" + recordId;
+    const COOLDOWN_MINUTES = 1;
+    const COOLDOWN_MS = COOLDOWN_MINUTES * 60 * 1000;
+    const ORIGINAL_HTML = '<i class="feather icon-shield"></i> Kiểm tra tính toàn vẹn';
+
+    function updateButtonState() {
+      let lastClickTimestamp;
+      try {
+        lastClickTimestamp = localStorage.getItem(STORAGE_KEY);
+      } catch (e) {
+        lastClickTimestamp = null;
+      }
+      
+      if (btn.data('intervalId')) {
+        clearInterval(btn.data('intervalId'));
+        btn.removeData('intervalId');
+      }
+
+      if (!lastClickTimestamp) {
+        btn.prop("disabled", false).html(ORIGINAL_HTML);
+        return;
+      }
+
+      const timePassed = Date.now() - parseInt(lastClickTimestamp, 10);
+
+      if (timePassed < COOLDOWN_MS) {
+        btn.prop("disabled", true);
+        
+        const updateTimer = () => {
+             const timeLeft = COOLDOWN_MS - (Date.now() - parseInt(lastClickTimestamp, 10));
+             if (timeLeft <= 0) {
+                 const intervalId = btn.data('intervalId');
+                 if(intervalId) clearInterval(intervalId);
+                 try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
+                 updateButtonState();
+             } else {
+                 const minutes = Math.floor(timeLeft / 60000);
+                 const seconds = Math.floor((timeLeft % 60000) / 1000);
+                 btn.text(`Vui lòng đợi ${minutes}m ${seconds}s`);
+             }
+        };
+
+        updateTimer(); 
+        const intervalId = setInterval(updateTimer, 1000);
+        btn.data('intervalId', intervalId);
+      } else {
+        try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
+        btn.prop("disabled", false).html(ORIGINAL_HTML);
+      }
+    }
+
+    updateButtonState();
+
+    btn.click(function () {
+      try { localStorage.setItem(STORAGE_KEY, Date.now().toString()); } catch (e) {}
+      btn.prop("disabled", true).html('<i class="fa fa-spinner fa-spin"></i> Đang kiểm tra...');
+      
+      if (btn.data('intervalId')) {
+        clearInterval(btn.data('intervalId'));
+        btn.removeData('intervalId');
+      }
+
+      $("#offChainHash").text("Đang tải...");
+      $("#onChainHash").text("Đang tải...");
+      $("#integrityResult").hide();
+      $("#integritySuccess").hide();
+      $("#integrityFail").hide();
+
+      $.post("/admin/medical-records/verify-integrity", { recordId: recordId })
+        .done(function (data) {
+          if (data.success) {
+            $("#offChainHash").text(data.localHash);
+            $("#onChainHash").text(data.blockchainHash);
+            $("#integrityResult").show();
+            if (data.isValid) {
+              $("#integritySuccess").show();
+              toastr.success("Dữ liệu bệnh án KHỚP với Blockchain.", "Toàn vẹn dữ liệu");
+            } else {
+              $("#integrityFail").show();
+              toastr.error("Dữ liệu bệnh án KHÔNG KHỚP với Blockchain!", "Cảnh báo");
+            }
+          } else {
+            $("#offChainHash").text("Lỗi");
+            $("#onChainHash").text("Lỗi");
+            toastr.error(data.message, "Lỗi");
+          }
+        })
+        .fail(function () {
+          toastr.error("Không thể kết nối đến server.", "Lỗi");
+        })
+        .always(function () {
+          updateButtonState();
+        });
+    });
+  });
+</script>
+
+<%- include('./partials/footer') %>

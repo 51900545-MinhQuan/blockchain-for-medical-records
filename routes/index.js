@@ -162,9 +162,13 @@ router.get("/medical-record/:id", async (req, res) => {
       return res.redirect("/medical-history");
     }
 
-    const doctors = await DoctorModel.find({})
-      .populate("userID", "fullname")
+    let doctors = await DoctorModel.find({})
+      .populate("userID", "fullname walletAddress")
       .select("doctorCode userID");
+
+    doctors = doctors.filter(
+      (doctor) => doctor.userID && doctor.userID.walletAddress
+    );
 
     // Tìm các bác sĩ đã được cấp quyền truy cập vào bệnh án này
     const grantedAccessDoctors = await DoctorModel.find({

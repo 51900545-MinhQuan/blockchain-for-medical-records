@@ -1,0 +1,147 @@
+<%- include('./partials/header') %>
+
+<div class="pcoded-main-container">
+  <div class="pcoded-content">
+    <div class="page-header">
+      <div class="page-block">
+        <div class="row align-items-center">
+          <div class="col-md-12">
+            <div class="page-header-title">
+              <h5 class="m-b-10">Danh sách Bệnh án</h5>
+            </div>
+            <ul class="breadcrumb">
+              <li class="breadcrumb-item">
+                <a href="/admin"><i class="feather icon-home"></i></a>
+              </li>
+              <li class="breadcrumb-item"><a>Danh sách bệnh án</a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Filter Form -->
+    <div class="row">
+      <div class="col-sm-12">
+        <div class="card">
+          <div class="card-body">
+            <form action="/admin/records" method="GET" class="form-inline">
+              <div class="form-group mb-2">
+                <label for="filterDate" class="mr-2">Chọn ngày:</label>
+                <input
+                  type="date"
+                  class="form-control"
+                  id="filterDate"
+                  name="filterDate"
+                  value="<%= filterDate || '' %>"
+                />
+              </div>
+              <button type="submit" class="btn btn-primary mb-2 ml-2">
+                Lọc
+              </button>
+              <a href="/admin/records" class="btn btn-secondary mb-2 ml-2"
+                >Xóa lọc</a
+              >
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="col-sm-12">
+        <% if (!records || records.length === 0) { %>
+        <div class="card">
+          <% if (filterDate) { %>
+            <div class="card-body text-center">
+              <p>Không có bệnh án trong ngày này.</p>
+            </div>
+          <% } else { %>
+            <div class="card-body text-center">
+              <p>Không có bệnh án trong hệ thống.</p>
+            </div>
+          <% } %>
+        </div>
+        <% } else { %>
+        <div class="card">
+          <div class="card-header">
+            <h5>
+              <i class="feather icon-calendar mr-2"></i>Ngày khám: <%=
+              currentDate %>
+            </h5>
+          </div>
+          <div class="card-body table-responsive">
+            <table class="table table-hover table-bordered">
+              <thead class="table-light">
+                <tr>
+                  <th>Mã Bệnh Án</th>
+                  <th>Bệnh Nhân</th>
+                  <th>Bác sĩ</th>
+                  <th>Ngày khám</th>
+                  <th class="text-center">Thao tác</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% records.forEach(record => { %>
+                <tr>
+                  <td><%= record.recordCode %></td>
+                  <% if (record.patientID) { %>
+                    <td><%= record.patientID.fullname %> (<%= record.patientID.patientCode %>)</td>
+                  <% } else { %>
+                    <td>Bệnh nhân không tồn tại</td>
+                  <% } %>
+
+                  <% if (record.doctorID) { %>
+                    <td><%= record.doctorID.fullname %></td>
+                  <% } else { %>
+                    <td>Bác sĩ không tồn tại</td>
+                  <% } %>
+                  <td><%= record.visitDate.toLocaleDateString('vi-VN') || '' %></td>
+                  <td class="text-center">
+                    <a
+                      href="/admin/medical-records/<%= record._id %>"
+                      class="btn btn-sm btn-info"
+                      >Xem chi tiết</a
+                    >
+                  </td>
+                </tr>
+                <% }) %>
+              </tbody>
+            </table>
+          </div>
+          <% if (totalPages > 1) { %>
+          <div class="card-footer">
+            <nav aria-label="Page navigation">
+              <ul class="pagination justify-content-end">
+                <li class="page-item <%= currentPage === 1 ? 'disabled' : '' %>">
+                  <a class="page-link" href="/admin/records?page=<%= currentPage - 1 %>&filterDate=<%= filterDate || '' %>" tabindex="-1">Previous</a>
+                </li>
+                <% for(let i = 1; i <= totalPages; i++) { %>
+                  <% 
+                    const showPage = Math.abs(i - currentPage) < 3 || i === 1 || i === totalPages;
+                    const showEllipsis = (i === 2 && currentPage > 4) || (i === totalPages - 1 && currentPage < totalPages - 3);
+                  %>
+                  <% if (showEllipsis) { %>
+                    <li class="page-item disabled"><span class="page-link">...</span></li>
+                  <% } %>
+                  <% if (showPage) { %>
+                    <li class="page-item <%= i === currentPage ? 'active' : '' %>">
+                      <a class="page-link" href="/admin/records?page=<%= i %>&filterDate=<%= filterDate || '' %>"><%= i %></a>
+                    </li>
+                  <% } %>
+                <% } %>
+                <li class="page-item <%= currentPage === totalPages ? 'disabled' : '' %>">
+                  <a class="page-link" href="/admin/records?page=<%= currentPage + 1 %>&filterDate=<%= filterDate || '' %>">Next</a>
+                </li>
+              </ul>
+            </nav>
+          </div>
+          <% } %>
+        </div>
+        <% } %>
+      </div>
+    </div>
+  </div>
+</div>
+
+<%- include('./partials/footer'); -%>

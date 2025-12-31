@@ -32,7 +32,53 @@
             <!-- [ breadcrumb ] end -->
             <!-- [ Main Content ] start -->
             <div class="row">
-              <div class="col-md-12"></div>
+              <div class="col-md-12">
+                <% if (typeof doctor !== 'undefined' && doctor) { %>
+                <div class="card">
+                  <div class="card-body">
+                    <h5 class="card-title">Thông tin chuyên môn</h5>
+                    <div class="row">
+                      <div class="col-md-6">
+                        <p class="mb-2"><strong>Chuyên khoa:</strong> <%= doctor.specialization || 'Chưa cập nhật' %></p>
+                      </div>
+                      <div class="col-md-6">
+                        <p class="mb-2">
+                          <strong>Số giấy phép:</strong>
+                          <span id="license-display">****</span>
+                          <i class="mdi mdi-eye-off" id="toggle-license" style="cursor: pointer; margin-left: 5px; color: #007bff;" title="Hiện/Ẩn"></i>
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <script>
+                  document.addEventListener('DOMContentLoaded', function() {
+                    const licenseNumber = "<%= doctor.licenseNumber || '' %>";
+                    const displaySpan = document.getElementById('license-display');
+                    const toggleBtn = document.getElementById('toggle-license');
+                    let isVisible = false;
+
+                    if (licenseNumber) {
+                      toggleBtn.addEventListener('click', function() {
+                        isVisible = !isVisible;
+                        if (isVisible) {
+                          displaySpan.textContent = licenseNumber;
+                          toggleBtn.classList.remove('mdi-eye-off');
+                          toggleBtn.classList.add('mdi-eye');
+                        } else {
+                          displaySpan.textContent = "****";
+                          toggleBtn.classList.remove('mdi-eye');
+                          toggleBtn.classList.add('mdi-eye-off');
+                        }
+                      });
+                    } else {
+                      displaySpan.textContent = "Chưa cập nhật";
+                      toggleBtn.style.display = 'none';
+                    }
+                  });
+                </script>
+                <% } %>
+              </div>
             </div>
           </div>
         </div>

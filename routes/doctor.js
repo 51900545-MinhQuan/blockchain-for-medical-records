@@ -28,12 +28,14 @@ const UpdateProfileValidator = require("./validators/update-profile");
 |------------------------------------------------------------------------------------------------------
 */
 
-router.get("/", function (req, res, next) {
+router.get("/", async function (req, res, next) {
   try {
     var user = req.session.user;
+    const doctor = await DoctorModel.findOne({ userID: user.id });
     return res.render("doctor/index", {
       title: "Trang tổng quan",
       user,
+      doctor,
       errors: req.flash("errors"),
       success: req.flash("success"),
     });
@@ -340,7 +342,6 @@ router.get("/medical-record/:id", async (req, res) => {
 
       // Nếu chưa có lastVerifiedHash thì là tạo mới
       if (!record.lastVerifiedHash) {
-        console.log("redirect to confirm create");
         return res.redirect(
           `/doctor/medical-records/confirm/${record._id}?type=create`
         );
@@ -558,6 +559,9 @@ router.post(
           .filter((med) => med.name && med.name.trim() !== "");
       }
 
+      const dbStart = Date.now();
+      const bcStart = dbStart;
+
       const recordData = {
         recordCode,
         patientID: patient._id,
@@ -575,7 +579,7 @@ router.post(
         prescribedMedications,
         followUpDate: followUpDate || null,
         followUpNote,
-        created_at: new Date(),
+        created_at: new Date(dbStart),
       };
 
       const recordHash = ethers.keccak256(
@@ -604,6 +608,13 @@ router.post(
 
       await record.save();
 
+      const dbEnd = Date.now();
+      const dbDuration = dbEnd - dbStart;
+
+      // console.log(`dbStart: ${dbStart}`);
+      // console.log(`dbEnd: ${dbEnd}`);
+      // console.log(`dbDuration: ${dbDuration} ms`);
+
       return res.redirect(
         `/doctor/medical-records/confirm/${record._id}?type=create`
       );
@@ -627,46 +638,6 @@ router.post(
     }
   }
 );
-
-/*
-|------------------------------------------------------------------------------------------------------
-| HIỂN THỊ TRANG XÁC NHẬN GHI BLOCKCHAIN
-|------------------------------------------------------------------------------------------------------
-*/
-router.get("/medical-records/confirm/:id", requireWallet, async (req, res) => {
-  try {
-    const { type } = req.query; // 'create', 'edit'
-    const record = await MedicalRecordModel.findById(req.params.id);
-
-    if (!record) {
-      req.flash("errors", "Không tìm thấy bệnh án để xác nhận.");
-      return res.redirect("/doctor/records");
-    }
-
-    const patient = await PatientModel.findById(record.patientID);
-
-    req.flash(
-      "success",
-      `Bệnh án đã được ${
-        type === "create" ? "tạo" : "cập nhật"
-      } thành công! Vui lòng xác nhận để ghi lên blockchain.`
-    );
-
-    res.render("doctor/confirm-record", {
-      title: "Xác nhận Bệnh án",
-      user: req.session.user,
-      record: record,
-      patient: patient,
-      type: type || "create",
-      success: req.flash("success"),
-      errors: req.flash("errors"),
-    });
-  } catch (error) {
-    console.error("Lỗi khi hiển thị trang xác nhận:", error);
-    req.flash("errors", "Có lỗi xảy ra khi hiển thị trang xác nhận.");
-    res.redirect("/doctor/records");
-  }
-});
 
 /*
 |------------------------------------------------------------------------------------------------------
@@ -760,37 +731,22 @@ router.post(
       if (!patient) {
         req.flash("errors", "Không tìm thấy bệnh nhân với mã đã nhập.");
         req.flash("oldData", req.body);
-        const patientIdQuery = req.body.patientId
-          ? `?patientId=${req.body.patientId}`
-          : "";
         return res.redirect("/doctor/records");
       }
 
-      let prescribedMedications = [];
-      if (medNames) {
-        const names = Array.isArray(medNames) ? medNames : [medNames];
-        const dosages = Array.isArray(medDosages) ? medDosages : [medDosages];
-        const frequencies = Array.isArray(medFrequencies)
-          ? medFrequencies
-          : [medFrequencies];
-        const durations = Array.isArray(medDurations)
-          ? medDurations
-          : [medDurations];
-
-        prescribedMedications = names
-          .map((name, index) => ({
-            name,
-            dosage: dosages[index],
-            frequency: frequencies[index],
-            duration: durations[index],
-          }))
-          .filter((med) => med.name && med.name.trim() !== "");
-      }
+      const prescribedMedications = (record.prescribedMedications || []).map(
+        (m) => ({
+          name: m.name,
+          dosage: m.dosage,
+          frequency: m.frequency,
+          duration: m.duration,
+        })
+      );
 
       const updatedRecordData = {
         recordCode,
         patientID: patient._id,
-        doctorID: req.session.user.id,
+        doctorID: record.doctorID,
         reasonForVisit,
         symptoms: symptoms
           ? symptoms
@@ -823,6 +779,7 @@ router.post(
       );
 
       await updatedRecord.save();
+
       return res.redirect(
         `/doctor/medical-records/confirm/${updatedRecord._id}?type=edit`
       );
@@ -835,6 +792,46 @@ router.post(
     }
   }
 );
+
+/*
+|------------------------------------------------------------------------------------------------------
+| HIỂN THỊ TRANG XÁC NHẬN GHI BLOCKCHAIN
+|------------------------------------------------------------------------------------------------------
+*/
+router.get("/medical-records/confirm/:id", requireWallet, async (req, res) => {
+  try {
+    const { type } = req.query; // 'create', 'edit'
+    const record = await MedicalRecordModel.findById(req.params.id);
+
+    if (!record) {
+      req.flash("errors", "Không tìm thấy bệnh án để xác nhận.");
+      return res.redirect("/doctor/records");
+    }
+
+    const patient = await PatientModel.findById(record.patientID);
+
+    req.flash(
+      "success",
+      `Bệnh án đã được ${
+        type === "create" ? "tạo" : "cập nhật"
+      } thành công! Vui lòng xác nhận để ghi lên blockchain.`
+    );
+
+    res.render("doctor/confirm-record", {
+      title: "Xác nhận Bệnh án",
+      user: req.session.user,
+      record: record,
+      patient: patient,
+      type: type || "create",
+      success: req.flash("success"),
+      errors: req.flash("errors"),
+    });
+  } catch (error) {
+    console.error("Lỗi khi hiển thị trang xác nhận:", error);
+    req.flash("errors", "Có lỗi xảy ra khi hiển thị trang xác nhận.");
+    res.redirect("/doctor/records");
+  }
+});
 
 /*
 |------------------------------------------------------------------------------------------------------
@@ -861,6 +858,15 @@ router.post("/medical-records/update-status", async (req, res) => {
       return res
         .status(404)
         .json({ success: false, message: "Không tìm thấy bệnh án." });
+    }
+
+    if (!record.lastVerifiedHash) {
+      const bcStart = new Date(record.created_at).getTime();
+      const bcEnd = Date.now();
+      const bcDuration = bcEnd - bcStart;
+      // console.log(`bcStart: ${bcStart}`);
+      // console.log(`bcEnd: ${bcEnd}`);
+      // console.log(`bcDuration: ${bcDuration} ms`);
     }
 
     return res.json({

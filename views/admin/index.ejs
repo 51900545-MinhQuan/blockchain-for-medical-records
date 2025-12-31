@@ -13,7 +13,83 @@
         </div>
       </div>
     </div>
-    <div class="row"></div>
+    
+    <!-- Stats Cards -->
+    <div class="row">
+      <div class="col-md-6 col-xl-3">
+        <div class="card bg-c-blue order-card">
+          <div class="card-body">
+            <h6 class="text-white">Bệnh nhân</h6>
+            <h2 class="text-right text-white"><i class="feather icon-users float-left"></i><span><%= stats.totalPatients %></span></h2>
+            <p class="m-b-0">Tổng số bệnh nhân</p>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-6 col-xl-3">
+        <div class="card bg-c-green order-card">
+          <div class="card-body">
+            <h6 class="text-white">Bác sĩ</h6>
+            <h2 class="text-right text-white"><i class="feather icon-user-check float-left"></i><span><%= stats.totalDoctors %></span></h2>
+            <p class="m-b-0">Tổng số bác sĩ</p>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-6 col-xl-3">
+        <div class="card bg-c-yellow order-card">
+          <div class="card-body">
+            <h6 class="text-white">Hồ sơ bệnh án</h6>
+            <h2 class="text-right text-white"><i class="feather icon-file-text float-left"></i><span><%= stats.totalRecords %></span></h2>
+            <p class="m-b-0">Tổng số hồ sơ</p>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-6 col-xl-3">
+        <div class="card bg-c-red order-card">
+          <div class="card-body">
+            <h6 class="text-white">Logs Blockchain</h6>
+            <h2 class="text-right text-white"><i class="feather icon-activity float-left"></i><span><%= stats.totalLogs %></span></h2>
+            <p class="m-b-0">Tổng số logs</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Recent Activity -->
+    <div class="row">
+      <div class="col-md-12">
+        <div class="card">
+          <div class="card-header">
+            <h5>Hoạt động gần đây</h5>
+          </div>
+          <div class="card-body table-border-style">
+            <div class="table-responsive">
+              <table class="table table-hover">
+                <thead>
+                  <tr>
+                    <th>Thời gian</th>
+                    <th>Sự kiện</th>
+                    <th>Mã bệnh án</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <% if (recentLogs && recentLogs.length > 0) { %>
+                    <% recentLogs.forEach(log => { %>
+                      <tr>
+                        <td><%= moment(log.created_at).format("DD/MM/YYYY HH:mm:ss") %></td>
+                        <td><%= log.event %></td>
+                        <td><%= log.data && log.data.recordCode ? log.data.recordCode : 'N/A' %></td>
+                      </tr>
+                    <% }) %>
+                  <% } else { %>
+                    <tr><td colspan="4" class="text-center">Chưa có hoạt động nào</td></tr>
+                  <% } %>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
     <!-- [ Main Content ] end -->
   </div>
 </section>

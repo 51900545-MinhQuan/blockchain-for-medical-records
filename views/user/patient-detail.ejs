@@ -290,15 +290,27 @@
 <script>
   document.addEventListener("DOMContentLoaded", function () {
     const linkButton = document.getElementById("linkPatientBtn");
-    const COOLDOWN_MINUTES = 5;
+    const COOLDOWN_MINUTES = 1;
     const COOLDOWN_MS = COOLDOWN_MINUTES * 60 * 1000;
+    const ORIGINAL_HTML = '<i class="feather icon-link mr-1"></i>Tìm & Liên kết hồ sơ';
+    let intervalId = null;
 
     function updateButtonState() {
-      const lastClickTimestamp = localStorage.getItem("lastLinkPatientClick");
+      let lastClickTimestamp;
+      try {
+        lastClickTimestamp = localStorage.getItem("lastLinkPatientClick");
+      } catch (e) {
+        lastClickTimestamp = null;
+      }
+
+      if (intervalId) {
+        clearInterval(intervalId);
+        intervalId = null;
+      }
+
       if (!lastClickTimestamp) {
         linkButton.disabled = false;
-        linkButton.innerHTML =
-          '<i class="feather icon-link mr-1"></i>Tìm & Liên kết hồ sơ';
+        linkButton.innerHTML = ORIGINAL_HTML;
         return;
       }
 
@@ -306,34 +318,33 @@
 
       if (timePassed < COOLDOWN_MS) {
         linkButton.disabled = true;
-        const timeLeft = COOLDOWN_MS - timePassed;
-        const minutes = Math.floor(timeLeft / 60000);
-        const seconds = Math.floor((timeLeft % 60000) / 1000);
-        linkButton.textContent = `Vui lòng đợi ${minutes}m ${seconds}s`;
+        
+        const updateTimer = () => {
+             const timeLeft = COOLDOWN_MS - (Date.now() - parseInt(lastClickTimestamp, 10));
+             if (timeLeft <= 0) {
+                 if(intervalId) clearInterval(intervalId);
+                 try { localStorage.removeItem("lastLinkPatientClick"); } catch (e) {}
+                 updateButtonState();
+             } else {
+                 const minutes = Math.floor(timeLeft / 60000);
+                 const seconds = Math.floor((timeLeft % 60000) / 1000);
+                 linkButton.textContent = `Vui lòng đợi ${minutes}m ${seconds}s`;
+             }
+        };
 
-        const intervalId = setInterval(() => {
-          const newTimeLeft = COOLDOWN_MS - (Date.now() - parseInt(lastClickTimestamp, 10));
-          if (newTimeLeft <= 0) {
-            clearInterval(intervalId);
-            updateButtonState();
-          } else {
-            const m = Math.floor(newTimeLeft / 60000);
-            const s = Math.floor((newTimeLeft % 60000) / 1000);
-            linkButton.textContent = `Vui lòng đợi ${m}m ${s}s`;
-          }
-        }, 1000);
+        updateTimer();
+        intervalId = setInterval(updateTimer, 1000);
       } else {
+        try { localStorage.removeItem("lastLinkPatientClick"); } catch (e) {}
         linkButton.disabled = false;
-        linkButton.innerHTML =
-          '<i class="feather icon-link mr-1"></i>Tìm & Liên kết hồ sơ';
-        localStorage.removeItem("lastLinkPatientClick");
+        linkButton.innerHTML = ORIGINAL_HTML;
       }
     }
 
     linkButton.addEventListener("click", async () => {
       linkButton.disabled = true;
       linkButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Đang xử lý...';
-      localStorage.setItem("lastLinkPatientClick", Date.now().toString());
+      try { localStorage.setItem("lastLinkPatientClick", Date.now().toString()); } catch (e) {}
 
       try {
         const response = await fetch("/profile/link-patients", { method: "POST" });

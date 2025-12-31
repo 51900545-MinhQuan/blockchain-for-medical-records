@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+    <title>Xóa CSDL</title>
+    <link rel="stylesheet" href="/assets/vendors/iconfonts/mdi/css/materialdesignicons.css" />
+    <link rel="stylesheet" href="/assets/vendors/css/vendor.addons.css" />
+    <link rel="stylesheet" href="/assets/css/shared/style.css" />
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/js/bootstrap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/js/toastr.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/css/toastr.min.css" />
+    <script src="/assets/vendors/js/vendor.addons.js"></script>
+  </head>
+  <body style="display: flex; justify-content: center; align-items: center; height: 100vh; background: #f2f2f2;">
+    <button id="delete-db-btn" class="btn btn-danger btn-lg">
+      Delete Database
+    </button>
+
+    <div class="modal fade" id="confirm-delete-modal-1" tabindex="-1" role="dialog">
+      <div class="modal-dialog" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Confirm Deletion</h5>
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+              <span aria-hidden="true">&times;</span>
+            </button>
+          </div>
+          <div class="modal-body">
+            <p>Admin có chắc chắn muốn xóa toàn bộ dữ liệu trong cơ sở dữ liệu? Hành động này không thể hoàn tác.</p>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+            <button type="button" class="btn btn-danger" id="continue-delete-btn">Continue</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal fade" id="confirm-delete-modal-2" tabindex="-1" role="dialog">
+      <div class="modal-dialog" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Final Confirmation</h5>
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+              <span aria-hidden="true">&times;</span>
+            </button>
+          </div>
+          <div class="modal-body">
+            <p>Hành động này không thể hoàn tác.
+              <br>Để xác nhận, vui lòng nhập <strong>DELETE</strong> vào ô bên dưới.</p>
+            <input type="text" class="form-control" id="delete-confirm-input" placeholder="DELETE">
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+            <button type="button" class="btn btn-danger" id="final-delete-btn" disabled>Delete Everything</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <script>
+      $(document).ready(function() {
+        $('#delete-db-btn').on('click', function() {
+          $('#confirm-delete-modal-1').modal('show');
+        });
+
+        $('#continue-delete-btn').on('click', function() {
+          $('#confirm-delete-modal-1').modal('hide');
+          $('#confirm-delete-modal-2').modal('show');
+        });
+
+        $('#delete-confirm-input').on('input', function() {
+          if ($(this).val() === 'DELETE') {
+            $('#final-delete-btn').prop('disabled', false);
+          } else {
+            $('#final-delete-btn').prop('disabled', true);
+          }
+        });
+
+        $('#final-delete-btn').on('click', async function() {
+          try {
+            const response = await fetch('/admin/delete-all-collections', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+            });
+            const data = await response.json();
+            if (data.success) {
+              toastr.success(data.message);
+              setTimeout(() => window.location.reload(), 2000);
+            } else {
+              throw new Error(data.message || 'An unknown error occurred.');
+            }
+          } catch (error) {
+            toastr.error('Error: ' + error.message);
+          } finally {
+            $('#confirm-delete-modal-2').modal('hide');
+            $('#delete-confirm-input').val('');
+            $('#final-delete-btn').prop('disabled', true);
+          }
+        });
+      });
+    </script>
+  </body>
+</html>

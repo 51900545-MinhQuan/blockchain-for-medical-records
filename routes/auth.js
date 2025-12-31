@@ -18,7 +18,6 @@ const Auth = require("../middleware/auth");
 // Import Validators
 const RegisterValidator = require("./validators/register");
 const LoginValidator = require("./validators/login");
-const ResetPasswordValidator = require("./validators/reset-password");
 const { link } = require("fs");
 
 /*
@@ -329,102 +328,6 @@ router.post("/register-doctor", async (req, res) => {
 
 /*
 |------------------------------------------------------------------------------------------------------
-| Đặt lại mật khẩu (tạm thời bỏ qua chức năng này)
-|------------------------------------------------------------------------------------------------------
-*/
-router.get("/reset-password", (req, res, next) => {
-  try {
-    res.render("auth/reset-password", {
-      title: "Đặt lại mật khẩu",
-      errors: req.flash("errors"),
-      email: req.flash("email"),
-    });
-  } catch (error) {
-    return res.status(500).render("error", {
-      error: {
-        title: "Lỗi",
-        status: 500,
-        stack: "Không thể kết nối đến hệ thống, vui lòng thử lại!",
-      },
-      message: "Connection errors",
-    });
-  }
-});
-
-router.post(
-  "/reset-password",
-  ResetPasswordValidator,
-  async (req, res, next) => {
-    try {
-      const result = validationResult(req);
-      const { email } = req.body;
-
-      req.flash("email", email);
-
-      if (result.errors.length !== 0) {
-        result = result.mapped();
-        for (fields in result) {
-          req.flash("errors", result[fields].msg);
-          return res.redirect("/auth/reset-password");
-        }
-      }
-
-      const user = await UserModel.findOne({ email });
-
-      if (!user) {
-        req.flash("error", "Đỉa chỉ email không tồn tại!");
-        return res.redirect("/auth/reset-password");
-      }
-
-      let password = crypto.randomBytes(8).toString("base64").slice(0, 10);
-      password = password.replace(/[^a-zA-Z0-9]/g, "") + "A1!";
-      const hashed = await argon2.hash(password);
-
-      const updatedUser = await UserModel.findByIdAndUpdate(user.id, {
-        password: hashed,
-      });
-      if (!updatedUser) {
-        req.flash(
-          "errors",
-          "Lỗi trong quá trình xử lý, không tìm thấy người dùng để cập nhật!"
-        );
-        return res.redirect("/auth/reset-password");
-      }
-
-      var transporter = nodemailer.createTransport({
-        service: "gmail",
-        auth: {
-          user: process.env.MAIL_USER,
-          pass: process.env.MAIL_PASS,
-        },
-      });
-
-      transporter.sendMail({
-        from: process.env.mailUser,
-        to: `${email}`,
-        subject: "[TB] THÔNG TIN TÀI KHOẢN NGƯỜI DÙNG - BỆNH VIỆN XXXXXX",
-        html: `<p>Vui lòng không chia sẻ thông tin này đến bất kỳ ai. 
-      Đây là thông tin tài khoản của bạn sau khi đặt lại mật khẩu:</p>
-      <b>Tên người dùng: </b>${user.fullname} <br> 
-      <b>Địa chỉ email: </b>${user.email} <br> 
-      <b>Mật khẩu mới: </b>${password} 
-      <p>Trân trọng ./.</p>`,
-      });
-
-      req.flash("success", 1);
-      return res.redirect("/auth/email");
-    } catch (error) {
-      return res.status(500).render("error", {
-        error: { status: 500, stack: "Tạm thời bỏ qua chức năng này" },
-        title: "Lỗi",
-        message: "Connection errors",
-      });
-    }
-  }
-);
-
-/*
-|------------------------------------------------------------------------------------------------------
 | ĐĂNG XUẤT TÀI KHOẢN NGƯỜI DÙNG
 |------------------------------------------------------------------------------------------------------
 */
@@ -436,39 +339,6 @@ router.get("/logout", (req, res, next) => {
     }
     res.redirect("/auth/login");
   });
-});
-
-/*
-|------------------------------------------------------------------------------------------------------
-| XÓA TOÀN BỘ DATABASE (CHỈ DÙNG CHO MỤC ĐÍCH TEST)
-|------------------------------------------------------------------------------------------------------
-*/
-router.post("/delete-all-collections", async (req, res) => {
-  try {
-    const collections = await mongoose.connection.db.collections();
-    const collectionsToDrop = [];
-
-    for (const collection of collections) {
-      if (
-        !collection.collectionName.startsWith("system.") &&
-        collection.collectionName !== "sessions"
-      ) {
-        collectionsToDrop.push(collection.drop());
-      }
-    }
-
-    await Promise.all(collectionsToDrop);
-
-    res.json({
-      success: true,
-      message: "All collections deleted successfully.",
-    });
-  } catch (error) {
-    console.error("Error deleting collections:", error);
-    res
-      .status(500)
-      .json({ success: false, message: "Failed to delete collections." });
-  }
 });
 
 module.exports = router;

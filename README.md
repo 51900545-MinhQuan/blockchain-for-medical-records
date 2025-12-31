@@ -9,7 +9,7 @@ Hướng dẫn chạy demo:
 1. npm install
 2. npm start
 
-Tài khoản MetaMask:
+Tài khoản MetaMask (đăng nhập thông qua gmail):
 email: benhvienqk2025@gmail.com
 password email: quankhoaTDTU_2025
 password MetaMask: 5pt0105wLx8UX5QL
@@ -63,6 +63,6 @@ Cấu trúc code:
 - views/ Chứa các file giao diện người dùng (EJS templates)
 - public/ Chứa các file tĩnh như CSS, JavaScript phía client, hình ảnh
 - public/assets/js Chứa 2 file account-change.js (để kiểm tra sự kiện đổi tài khoản ví) và blockchain-client.js (để thực hiện các quy trình liên quan đến blockchain ở phía client)
+- blockchain/ Chứa 2 file event-listener.js (để nhận sự kiện từ smart contract và tạo log admin) và blockchain-admin.js (để thực hiện các giao dịch sử dụng ví của admin)
 - app.js File chính của ứng dụng, nơi khởi tạo và cấu hình chung
-
-XÓA "DELETE ALL COLLECTIONS" AUTH.JS 441, LOGIN.EJS 84/204 SAU KHI TEST
+- bin/www File cấu hình server

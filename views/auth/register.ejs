@@ -21,21 +21,33 @@
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/css/toastr.min.css"
     />
+    <style>
+      body {
+        background: url("/assets/images/background.jpg") no-repeat center center fixed;
+        background-size: cover;
+      }
+      .authentication-theme {
+        background: transparent !important;
+      }
+      .grid {
+        background: rgba(255, 255, 255, 0.4) !important;
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        border-radius: 15px !important;
+      }
+    </style>
   </head>
 
   <body>
     <div class="authentication-theme auth-style_1 pt-5">
       <div class="row">
-        <div class="col-12 logo-section mb-4">
-          <a href="#" class="logo">
-            <img src="/assets/images/logo.png" alt="logo" />
-          </a>
-        </div>
-      </div>
-      <div class="row">
         <div class="col-lg-5 col-md-7 col-sm-9 col-11 mx-auto">
           <div class="grid">
             <div class="grid-body">
+              <div class="text-center mb-4">
+                <img src="/assets/images/logo.png" alt="logo" style="max-width: 100%; height: auto; max-height: 140px;" />
+              </div>
               <div class="row">
                 <div
                   class="col-lg-8 col-md-10 col-sm-11 col-12 mx-auto form-wrapper"
@@ -72,7 +84,7 @@
                         value="<%= oldData.password || '' %>"
                         placeholder="Mật khẩu"
                       />
-                      <small class="form-text text-info"
+                      <small class="form-text text-dark"
                         >Mật khẩu phải dài ít nhất 8 ký tự, bao gồm chữ hoa, chữ
                         thường, số và ký tự đặc biệt.</small
                       >
@@ -100,7 +112,7 @@
                     <div class="form-group">
                       <label for="inputPhone">Số điện thoại</label>
                       <input
-                        type="number"
+                        type="text"
                         name="phone"
                         class="form-control"
                         value="<%= oldData.phone || '' %>"
