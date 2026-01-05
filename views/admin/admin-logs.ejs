@@ -45,41 +45,15 @@
         <div class="card">
           <div class="card-body">
             <ul class="nav nav-pills mb-4">
+              <% tabs.forEach(function(tab) { %>
               <li class="nav-item">
                 <a
-                  class="nav-link <%= currentType === 'all' ? 'active' : '' %>"
-                  href="/admin/logs"
-                  >Tất cả</a
+                  class="nav-link <%= currentType === tab.id ? 'active' : '' %>"
+                  href="/admin/logs<%= tab.id === 'all' ? '' : '?type=' + tab.id %>"
+                  ><%= tab.name %></a
                 >
               </li>
-              <li class="nav-item">
-                <a
-                  class="nav-link <%= currentType === 'RecordAdded' ? 'active' : '' %>"
-                  href="/admin/logs?type=RecordAdded"
-                  >Thêm bệnh án</a
-                >
-              </li>
-              <li class="nav-item">
-                <a
-                  class="nav-link <%= currentType === 'RecordUpdated' ? 'active' : '' %>"
-                  href="/admin/logs?type=RecordUpdated"
-                  >Chỉnh sửa bệnh án</a
-                >
-              </li>
-              <li class="nav-item">
-                <a
-                  class="nav-link <%= currentType === 'AccessGranted' ? 'active' : '' %>"
-                  href="/admin/logs?type=AccessGranted"
-                  >Cấp quyền truy cập bệnh án</a
-                >
-              </li>
-              <li class="nav-item">
-                <a
-                  class="nav-link <%= currentType === 'AccessRevoked' ? 'active' : '' %>"
-                  href="/admin/logs?type=AccessRevoked"
-                  >Thu hồi quyền truy cập bệnh án</a
-                >
-              </li>
+              <% }); %>
             </ul>
 
             <div class="table-responsive">
@@ -166,5 +140,3 @@
 </div>
 
 <%- include('./partials/footer') %>
-
-

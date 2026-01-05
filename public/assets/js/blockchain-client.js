@@ -3,7 +3,6 @@ const CONTRACT_ABI = [
   "function updateRecord(bytes32 _recordCode, bytes32 _patientCode, bytes32 _recordHash) public",
   "function grantAccess(bytes32 _patientCode, bytes32 _recordCode, bytes32 _doctorCode) public",
   "function revokeAccess(bytes32 _patientCode, bytes32 _recordCode, bytes32 _doctorCode) public",
-  "function hasAccess(bytes32 _patientCode, bytes32 _recordCode, bytes32 _doctorCode) public view returns (bool)",
   "event RecordAdded(bytes32 indexed recordCode, bytes32 indexed recordHash, address indexed doctor, uint256 timestamp)",
   "event RecordUpdated(bytes32 indexed recordCode, bytes32 indexed recordHash, address indexed doctor, uint256 timestamp)",
   "event AccessGranted(bytes32 indexed patientCode, bytes32 recordCode, bytes32 indexed doctorCode, uint256 timestamp)",
@@ -306,31 +305,6 @@ async function updateRecordByDoctor(
     } else {
       toastr.error("Đã xảy ra lỗi khi cập nhật bệnh án trên blockchain.");
     }
-    return false;
-  }
-}
-/**
- * Bác sĩ kiểm tra quyền truy cập hồ sơ bệnh án của mình trên blockchain.
- * @param {string} patientCode - Mã bệnh nhân
- * @param {string} recordCode - Mã hồ sơ bệnh án
- * @param {string} doctorCode - Mã bác sĩ
- * @returns {Promise<boolean>} - Trả về true nếu có quyền truy cập, false nếu không có hoặc lỗi.
- */
-async function hasAccessToThisRecord(patientCode, recordCode, doctorCode) {
-  const contract = await getContract(false);
-  if (!contract) return false;
-  const bytesPatientCode = ethers.encodeBytes32String(patientCode);
-  const bytesRecordCode = ethers.encodeBytes32String(recordCode);
-  const bytesDoctorCode = ethers.encodeBytes32String(doctorCode);
-  try {
-    const access = await contract.hasAccess(
-      bytesPatientCode,
-      bytesRecordCode,
-      bytesDoctorCode
-    );
-    return access;
-  } catch (error) {
-    console.error("Lỗi khi kiểm tra quyền truy cập trên blockchain:", error);
     return false;
   }
 }

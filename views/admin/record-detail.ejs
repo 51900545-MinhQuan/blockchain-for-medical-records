@@ -1,5 +1,18 @@
 <%- include('./partials/header') %>
 
+<style>
+  .custom-control {
+    position: relative;
+  }
+  .custom-control-input {
+    z-index: 100 !important;
+    cursor: pointer;
+  }
+  .custom-control-label {
+    cursor: pointer;
+  }
+</style>
+
 <div class="pcoded-main-container">
   <div class="pcoded-content">
     <div class="page-header">
@@ -67,11 +80,26 @@
                     <% logs.forEach(log => { %>
                       <li>
                         <b><%= moment(log.created_at).format("DD/MM/YYYY HH:mm:ss") %></b>: 
-                        <%= log.event === 'RecordAdded' ? 'Tạo bệnh án' : 'Chỉnh sửa bệnh án' %> 
-                        bởi 
+                        <% 
+                          let eventName = log.event;
+                          if (log.event === 'RecordAdded') eventName = 'Tạo bệnh án';
+                          else if (log.event === 'RecordUpdated') eventName = 'Chỉnh sửa bệnh án';
+                          else if (log.event === 'AccessAttempt') eventName = `Truy cập bệnh án (${log.data.accessGranted ? 'Thành công' : 'Thất bại'})`;
+                          else if (log.event === 'RecordHashUpdatedByAdmin') {
+                            eventName = 'Admin rollback bệnh án';
+                            let time = (log.data && log.data.versionDate) ? log.data.versionDate : ((log.data && log.data.updated_at) ? log.data.updated_at : log.created_at);
+                            eventName += ` về phiên bản ${moment(time).format("DD/MM/YYYY HH:mm:ss")}`;
+                          }
+                          else if (log.event === 'AccessGranted') eventName = 'Cấp quyền truy cập';
+                          else if (log.event === 'AccessRevoked') eventName = 'Thu hồi quyền truy cập';
+                        %>
+                        <%= eventName %> 
+                        <%= (log.event === 'RecordHashUpdatedByAdmin') ? '' : ((log.event === 'AccessGranted' || log.event === 'AccessRevoked') ? 'cho' : 'bởi') %> 
                         <% 
                           let doctorDisplay = "";
-                          if (log.data && log.data.doctor) {
+                          if (log.event === 'RecordHashUpdatedByAdmin') {
+                            doctorDisplay = "";
+                          } else if (log.data && log.data.doctor) {
                             if (typeof log.data.doctor === 'string') {
                               doctorDisplay = log.data.doctor;
                             } else {
@@ -86,6 +114,58 @@
                     <li class="text-muted font-italic">Chưa có dữ liệu lịch sử.</li>
                   <% } %>
                 </ul>
+                <% if (typeof totalLogPages !== 'undefined' && totalLogPages > 1) { %>
+                  <div class="d-flex justify-content-center mt-2">
+                    <nav aria-label="Log navigation">
+                      <ul class="pagination pagination-sm mb-0">
+                        <li class="page-item <%= currentLogPage <= 1 ? 'disabled' : '' %>">
+                          <a class="page-link" href="?logPage=<%= currentLogPage - 1 %>" aria-label="Previous">
+                            <span aria-hidden="true">&laquo;</span>
+                          </a>
+                        </li>
+                        <li class="page-item disabled">
+                          <span class="page-link text-muted"><%= currentLogPage %> / <%= totalLogPages %></span>
+                        </li>
+                        <li class="page-item <%= currentLogPage >= totalLogPages ? 'disabled' : '' %>">
+                          <a class="page-link" href="?logPage=<%= currentLogPage + 1 %>" aria-label="Next">
+                            <span aria-hidden="true">&raquo;</span>
+                          </a>
+                        </li>
+                      </ul>
+                    </nav>
+                  </div>
+                <% } %>
+              </div>
+            </div>
+            <div class="row mt-3">
+              <div class="col-12">
+                <label class="font-weight-bold">Lịch sử phiên bản bệnh án:</label>
+                <div class="list-group">
+                  <% if (typeof versions !== 'undefined' && versions.length > 0) { %>
+                    <% versions.forEach(version => { %>
+                      <div class="list-group-item">
+                        <div class="custom-control custom-radio">
+                          <input type="radio" id="version_<%= version.version %>" name="versionSelect" class="custom-control-input" <%= version.version === record.currentVersion ? 'checked' : '' %>>
+                          <label class="custom-control-label font-weight-bold" for="version_<%= version.version %>">
+                            Phiên bản #<%= version.version %> <%= version.version === record.currentVersion ? '(Hiện tại)' : '' %>
+                          </label>
+                        </div>
+                        <div class="ml-4">
+                          <div>- Thời gian: <%= moment(version.createdAt).format("DD/MM/YYYY HH:mm:ss") %></div>
+                          <div>- Bác sĩ: <%= version.updatedBy ? version.updatedBy.fullname : 'N/A' %> - <%= version.updatedBy ? version.updatedBy.linkedDoctorCode : 'N/A' %></div>
+                          <div class="text-break">- Hash: <%= version.recordHash %></div>
+                        </div>
+                      </div>
+                    <% }) %>
+                  <% } else { %>
+                    <div class="alert alert-light border">Chưa có lịch sử phiên bản.</div>
+                  <% } %>
+                </div>
+                <div class="mt-2">
+                  <button id="btnRollback" class="btn btn-danger btn-sm" disabled>
+                    <i class="feather icon-rotate-ccw"></i> Rollback về phiên bản đã chọn
+                  </button>
+                </div>
               </div>
             </div>
             <div class="row mt-4">
@@ -120,6 +200,28 @@
             </div>
           </div>
         </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Confirm Rollback -->
+<div class="modal fade" id="rollbackModal" tabindex="-1" role="dialog" aria-labelledby="rollbackModalLabel" aria-hidden="true">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="rollbackModalLabel">Xác nhận Rollback</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        Bạn có chắc chắn muốn quay lại phiên bản <b id="lblRollbackVersion"></b> không? <br/>
+        Hành động này sẽ tạo ra một phiên bản mới với dữ liệu của phiên bản cũ và cập nhật Hash trên Blockchain.
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">Hủy</button>
+        <button type="button" class="btn btn-danger" id="btnConfirmRollback">Xác nhận Rollback</button>
       </div>
     </div>
   </div>
@@ -222,6 +324,52 @@
         .always(function () {
           updateButtonState();
         });
+    });
+
+    // Rollback
+    const recordCurrentVersion = parseInt("<%= record.currentVersion %>") || 0;
+    let selectedVersion = null;
+
+    $('input[name="versionSelect"]').change(function() {
+      const id = $(this).attr('id');
+      const version = parseInt(id.split('_')[1]);
+      selectedVersion = version;
+      
+      if (version && version !== recordCurrentVersion) {
+        $('#btnRollback').prop('disabled', false);
+      } else {
+        $('#btnRollback').prop('disabled', true);
+      }
+    });
+
+    $('#btnRollback').click(function() {
+      if (selectedVersion) {
+        $('#lblRollbackVersion').text('#' + selectedVersion);
+        $('#rollbackModal').modal('show');
+      }
+    });
+
+    $('#btnConfirmRollback').click(function() {
+      const btnConfirm = $(this);
+      btnConfirm.prop('disabled', true).text('Đang xử lý...');
+
+      $.post("/admin/medical-records/rollback", { 
+        recordId: "<%= record._id %>", 
+        version: selectedVersion 
+      })
+      .done(function(data) {
+        if (data.success) {
+          toastr.success("Rollback thành công!", "Thành công");
+          setTimeout(() => location.reload(), 1500);
+        } else {
+          toastr.error(data.message || "Có lỗi xảy ra.", "Lỗi");
+          btnConfirm.prop('disabled', false).text('Xác nhận Rollback');
+        }
+      })
+      .fail(function() {
+        toastr.error("Lỗi kết nối server.", "Lỗi");
+        btnConfirm.prop('disabled', false).text('Xác nhận Rollback');
+      });
     });
   });
 </script>

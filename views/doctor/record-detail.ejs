@@ -25,6 +25,7 @@
             <a
               href="/doctor/medical-records/edit/<%= record._id %>"
               class="btn btn-primary"
+              onclick="toastr.info('Đang kiểm tra quyền truy cập trên Blockchain. Vui lòng đợi...', 'Hệ thống', { timeOut: 20000, progressBar: true, closeButton: true });"
               ><i class="feather icon-edit mr-2"></i>Chỉnh sửa bệnh án</a
             >
           </div>

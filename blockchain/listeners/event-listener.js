@@ -15,6 +15,8 @@ const CONTRACT_ABI = [
   "event RecordUpdated(bytes32 indexed recordCode, bytes32 indexed recordHash, address indexed doctor, uint256 timestamp)",
   "event AccessGranted(bytes32 indexed patientCode, bytes32 recordCode, bytes32 indexed doctorCode, uint256 timestamp)",
   "event AccessRevoked(bytes32 indexed patientCode, bytes32 recordCode, bytes32 indexed doctorCode, uint256 timestamp)",
+  "event AccessAttempt(bytes32 indexed recordCode, bytes32 indexed doctorCode, bool accessGranted, uint256 timestamp)",
+  "event RecordHashUpdatedByAdmin(bytes32 indexed recordCode, bytes32 indexed recordHash, address indexed wallet, uint256 timestamp)",
 ];
 
 function startEventListener() {
@@ -117,6 +119,41 @@ function startEventListener() {
           doctor: doctor
             ? { code: decodedDoctorCode, fullname: doctor.fullname }
             : { code: decodedDoctorCode, fullname: "Không có" },
+          timestamp: toDate(timestamp),
+        },
+      });
+    }
+  );
+  contract.on(
+    "AccessAttempt",
+    async (recordCode, doctorCode, accessGranted, timestamp) => {
+      const decodedDoctorCode = ethers.decodeBytes32String(doctorCode);
+      const doctor = await UserModel.findOne({
+        linkedDoctorCode: decodedDoctorCode,
+        role: 2,
+      });
+      await AdminLogModel.create({
+        event: "AccessAttempt",
+        data: {
+          recordCode: ethers.decodeBytes32String(recordCode),
+          doctor: doctor
+            ? { code: decodedDoctorCode, fullname: doctor.fullname }
+            : { code: decodedDoctorCode, fullname: "Không có" },
+          accessGranted,
+          timestamp: toDate(timestamp),
+        },
+      });
+    }
+  );
+  contract.on(
+    "RecordHashUpdatedByAdmin",
+    async (recordCode, recordHash, walletAddress, timestamp) => {
+      await AdminLogModel.create({
+        event: "RecordHashUpdatedByAdmin",
+        data: {
+          recordCode: ethers.decodeBytes32String(recordCode),
+          recordHash,
+          walletAddress,
           timestamp: toDate(timestamp),
         },
       });

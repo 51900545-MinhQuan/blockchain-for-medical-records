@@ -8,11 +8,15 @@ const MedicalRecordModel = require("../models/medical-record");
 const UserModel = require("../models/user");
 const DoctorModel = require("../models/doctor");
 const PatientModel = require("../models/patient");
+const MedicalRecordVersionModel = require("../models/medical-record-version");
 const moment = require("moment");
 const {
   verifyRecordIntegrity,
 } = require("../blockchain/services/blockchain-admin.js");
-const { getRecordHash } = require("../blockchain/services/blockchain-admin.js");
+const {
+  getRecordHash,
+  updateRecordHashByAdmin,
+} = require("../blockchain/services/blockchain-admin.js");
 
 /*
 |------------------------------------------------------------------------------------------------------
@@ -73,6 +77,18 @@ router.get("/logs", async (req, res) => {
       "RecordUpdated",
       "AccessGranted",
       "AccessRevoked",
+      "AccessAttempt",
+      "RecordHashUpdatedByAdmin",
+    ];
+
+    const tabs = [
+      { id: "all", name: "Tất cả" },
+      { id: "RecordAdded", name: "Thêm bệnh án" },
+      { id: "RecordUpdated", name: "Chỉnh sửa bệnh án" },
+      { id: "AccessGranted", name: "Cấp quyền truy cập bệnh án" },
+      { id: "AccessRevoked", name: "Thu hồi quyền truy cập bệnh án" },
+      { id: "AccessAttempt", name: "Truy cập bệnh án" },
+      { id: "RecordHashUpdatedByAdmin", name: "Admin cập nhật Hash" },
     ];
 
     if (type && validTypes.includes(type)) {
@@ -106,6 +122,7 @@ router.get("/logs", async (req, res) => {
       currentType: type || "all",
       currentPage: page,
       totalPages,
+      tabs,
       type,
       moment,
       errors: req.flash("errors"),
@@ -195,16 +212,71 @@ router.get("/medical-records/:id", async (req, res) => {
       return res.redirect("/admin/records");
     }
 
-    const logs = await AdminLogModel.find({
+    const logPage = parseInt(req.query.logPage) || 1;
+    const logLimit = 20;
+    const logSkip = (logPage - 1) * logLimit;
+
+    const logQuery = {
       "data.recordCode": record.recordCode,
-      event: { $in: ["RecordAdded", "RecordUpdated"] },
-    }).sort({ created_at: -1 });
+      event: {
+        $in: [
+          "RecordAdded",
+          "RecordUpdated",
+          "AccessAttempt",
+          "RecordHashUpdatedByAdmin",
+          "AccessGranted",
+          "AccessRevoked",
+        ],
+      },
+    };
+
+    const totalLogs = await AdminLogModel.countDocuments(logQuery);
+    const totalLogPages = Math.ceil(totalLogs / logLimit);
+
+    const logs = await AdminLogModel.find(logQuery)
+      .sort({ created_at: -1 })
+      .skip(logSkip)
+      .limit(logLimit)
+      .lean();
+
+    const versions = await MedicalRecordVersionModel.find({
+      medicalRecordID: record._id,
+    })
+      .populate("updatedBy", "fullname linkedDoctorCode")
+      .sort({ version: -1 });
+
+    logs.forEach((log) => {
+      if (
+        log.event === "RecordHashUpdatedByAdmin" &&
+        log.data &&
+        log.data.recordHash
+      ) {
+        const newVersion = versions.find(
+          (v) => v.recordHash === log.data.recordHash
+        );
+        if (newVersion) {
+          if (newVersion.rollbackFromVersion) {
+            const originalVersion = versions.find(
+              (v) => v.version === newVersion.rollbackFromVersion
+            );
+            log.data.versionDate = originalVersion
+              ? originalVersion.createdAt
+              : newVersion.createdAt;
+          } else {
+            log.data.versionDate = newVersion.createdAt;
+          }
+        }
+      }
+    });
 
     return res.render("admin/record-detail", {
       title: "Chi tiết bệnh án",
       user: req.session.user,
       record,
       logs,
+      currentLogPage: logPage,
+      totalLogPages,
+      versions,
       moment,
       errors: req.flash("errors"),
       success: req.flash("success"),
@@ -286,6 +358,117 @@ router.post("/medical-records/verify-integrity", async (req, res) => {
       success: false,
       message: "Lỗi server: " + error.message,
     });
+  }
+});
+
+router.post("/medical-records/rollback", async (req, res) => {
+  try {
+    const { recordId, version } = req.body;
+    const targetVersion = parseInt(version);
+
+    const record = await MedicalRecordModel.findById(recordId);
+    if (!record)
+      return res.json({ success: false, message: "Không tìm thấy bệnh án." });
+
+    if (record.currentVersion === targetVersion) {
+      return res.json({
+        success: false,
+        message: "Không thể rollback về phiên bản hiện tại.",
+      });
+    }
+
+    const versionDoc = await MedicalRecordVersionModel.findOne({
+      medicalRecordID: recordId,
+      version: targetVersion,
+    });
+
+    if (!versionDoc)
+      return res.json({
+        success: false,
+        message: "Không tìm thấy dữ liệu phiên bản.",
+      });
+
+    const data = versionDoc.recordData;
+
+    // Chuẩn bị dữ liệu cập nhật
+    const updatePayload = {
+      reasonForVisit: data.reasonForVisit,
+      symptoms: data.symptoms,
+      diagnosis: data.diagnosis,
+      notes: data.notes,
+      vitalSigns: data.vitalSigns,
+      prescribedMedications: data.prescribedMedications,
+      followUpDate: data.followUpDate,
+      followUpNote: data.followUpNote,
+      updated_at: new Date(),
+      updatedBy: versionDoc.updatedBy,
+      currentVersion: record.currentVersion + 1,
+      status: "Verified",
+    };
+
+    // Tính toán Hash mới (Logic tương tự verifyRecordIntegrity)
+    const vs = updatePayload.vitalSigns || {};
+    const vitalSignsForHash = {
+      height: vs.height == null ? "" : String(vs.height),
+      weight: vs.weight == null ? "" : String(vs.weight),
+      temperature: vs.temperature == null ? "" : String(vs.temperature),
+      bloodPressure: vs.bloodPressure || "",
+      pulse: vs.pulse == null ? "" : String(vs.pulse),
+    };
+
+    const medsForHash = (updatePayload.prescribedMedications || []).map(
+      (m) => ({
+        name: m.name,
+        dosage: m.dosage,
+        frequency: m.frequency,
+        duration: m.duration,
+      })
+    );
+
+    const recordDataForHash = {
+      recordCode: record.recordCode,
+      patientID: record.patientID,
+      doctorID: record.doctorID,
+      reasonForVisit: updatePayload.reasonForVisit,
+      symptoms: updatePayload.symptoms,
+      diagnosis: updatePayload.diagnosis,
+      notes: updatePayload.notes,
+      vitalSigns: vitalSignsForHash,
+      prescribedMedications: medsForHash,
+      followUpDate: updatePayload.followUpDate || null,
+      followUpNote: updatePayload.followUpNote,
+      updated_at: updatePayload.updated_at,
+    };
+
+    const recordHash = ethers.keccak256(
+      ethers.toUtf8Bytes(JSON.stringify(recordDataForHash))
+    );
+
+    // Cập nhật Blockchain
+    await updateRecordHashByAdmin(record.recordCode, recordHash);
+
+    // Cập nhật DB
+    updatePayload.recordHash = recordHash;
+    updatePayload.lastVerifiedHash = record.recordHash;
+
+    Object.assign(record, updatePayload);
+    await record.save();
+
+    // Tạo phiên bản mới trong lịch sử
+    await MedicalRecordVersionModel.create({
+      medicalRecordID: record._id,
+      recordCode: record.recordCode,
+      version: record.currentVersion,
+      recordData: data,
+      recordHash: recordHash,
+      updatedBy: versionDoc.updatedBy,
+      rollbackFromVersion: targetVersion,
+    });
+
+    return res.json({ success: true });
+  } catch (error) {
+    console.error("Lỗi khi rollback:", error);
+    return res.json({ success: false, message: error.message });
   }
 });
 

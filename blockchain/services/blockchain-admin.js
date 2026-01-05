@@ -13,12 +13,14 @@ const CONTRACT_ABI = [
   "function assignDoctor(bytes32 _doctorCode, address _wallet) public",
   "function assignPatient(bytes32 _patientCode, address _wallet) public",
   "function linkGuardianToPatient(bytes32 _patientCode, address _guardianWallet) public",
-  "function hasAccess(bytes32 _patientCode, bytes32 _recordCode, bytes32 _doctorCode) public view returns (bool)",
+  "function attemptAccess(bytes32 _patientCode, bytes32 _recordCode, bytes32 _doctorCode) external returns (bool)",
   "function verifyRecord(bytes32 _recordCode, bytes32 _recordHash) public view returns (bool)",
   "function getRecordHash(bytes32 _recordCode) public view returns (bytes32)",
+  "function updateRecordHashByAdmin(bytes32 _recordCode, bytes32 _recordHash) public",
   "event DoctorAssigned(bytes32 indexed doctorCode, address indexed wallet)",
   "event PatientAssigned(bytes32 indexed patientCode, address indexed wallet)",
   "event GuardianLinked(bytes32 indexed patientCode, address indexed wallet)",
+  "event AccessAttempt(bytes32 indexed recordCode, bytes32 indexed doctorCode, bool accessGranted, uint256 timestamp)",
 ];
 
 const contract = new ethers.Contract(CONTRACT_ADDR, CONTRACT_ABI, wallet);
@@ -81,12 +83,34 @@ async function checkRecordAccess(patientCode, recordCode, doctorCode) {
     const recordCodeBytes32 = ethers.encodeBytes32String(recordCode);
     const doctorCodeBytes32 = ethers.encodeBytes32String(doctorCode);
 
-    const hasAccess = await contract.hasAccess(
+    const hasAccess = await contract.attemptAccess.staticCall(
       patientCodeBytes32,
       recordCodeBytes32,
       doctorCodeBytes32
     );
+
     return hasAccess;
+  } catch (error) {
+    console.error(
+      `Blockchain kiểm tra quyền truy cập thất bại cho Bác sĩ ${doctorCode}, Bệnh nhân ${patientCode}, Bệnh án ${recordCode}:`,
+      error.message
+    );
+    return false;
+  }
+}
+
+async function getAccessEvent(patientCode, recordCode, doctorCode) {
+  try {
+    const patientCodeBytes32 = ethers.encodeBytes32String(patientCode);
+    const recordCodeBytes32 = ethers.encodeBytes32String(recordCode);
+    const doctorCodeBytes32 = ethers.encodeBytes32String(doctorCode);
+
+    const tx = await contract.attemptAccess(
+      patientCodeBytes32,
+      recordCodeBytes32,
+      doctorCodeBytes32
+    );
+    return true;
   } catch (error) {
     console.error(
       `Blockchain kiểm tra quyền truy cập thất bại cho Bác sĩ ${doctorCode}, Bệnh nhân ${patientCode}, Bệnh án ${recordCode}:`,
@@ -104,7 +128,7 @@ async function getRecordHash(recordCode) {
   } catch (error) {
     console.error("Lỗi khi lấy hash bệnh án từ blockchain:", error);
     return null;
-  } 
+  }
 }
 
 async function verifyRecordIntegrity(recordCode, recordHash) {
@@ -119,11 +143,33 @@ async function verifyRecordIntegrity(recordCode, recordHash) {
   }
 }
 
+async function updateRecordHashByAdmin(recordCode, recordHash) {
+  try {
+    const recordCodeBytes32 = ethers.encodeBytes32String(recordCode);
+    console.log(
+      `Cập nhật hash bệnh án trên chuỗi: Mã=${recordCode} (${recordCodeBytes32}), Hash=${recordHash}`
+    );
+    const tx = await contract.updateRecordHashByAdmin(
+      recordCodeBytes32,
+      recordHash
+    );
+    return { success: true };
+  } catch (error) {
+    console.error(
+      "Lỗi khi giao dịch updateRecordHashByAdmin:",
+      error.shortMessage
+    );
+    throw error;
+  }
+}
+
 module.exports = {
   assignDoctor,
   assignPatient,
   linkGuardianToPatient,
   checkRecordAccess,
+  getAccessEvent,
   getRecordHash,
   verifyRecordIntegrity,
+  updateRecordHashByAdmin,
 };

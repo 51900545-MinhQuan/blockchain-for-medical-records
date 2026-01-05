@@ -8,6 +8,7 @@ const { ethers } = require("ethers");
 const {
   assignDoctor,
   checkRecordAccess,
+  getAccessEvent,
 } = require("../blockchain/services/blockchain-admin.js");
 
 // Import Models
@@ -15,6 +16,7 @@ const UserModel = require("../models/user");
 const DoctorModel = require("../models/doctor");
 const PatientModel = require("../models/patient");
 const MedicalRecordModel = require("../models/medical-record");
+const MedicalRecordVersionModel = require("../models/medical-record-version");
 
 // Import Validators
 const ChangePasswordValidator = require("./validators/change-password");
@@ -359,11 +361,14 @@ router.get("/medical-record/:id", async (req, res) => {
       doctor.doctorCode
     );
 
+    await getAccessEvent(
+      record.patientID.patientCode,
+      record.recordCode,
+      doctor.doctorCode
+    );
+
     if (!hasAccessOnChain) {
-      req.flash(
-        "errors",
-        "Quyền truy cập bệnh án này đã bị thu hồi trên Blockchain."
-      );
+      req.flash("errors", "Bạn không có quyền truy cập vào bệnh án này.");
       return res.redirect("doctor/patients");
     }
 
@@ -608,6 +613,25 @@ router.post(
 
       await record.save();
 
+      // Lưu phiên bản đầu tiên vào lịch sử (Version 1)
+      await MedicalRecordVersionModel.create({
+        medicalRecordID: record._id,
+        recordCode: record.recordCode,
+        version: 1,
+        recordData: {
+          reasonForVisit: record.reasonForVisit,
+          symptoms: record.symptoms,
+          diagnosis: record.diagnosis,
+          notes: record.notes,
+          vitalSigns: record.vitalSigns,
+          prescribedMedications: record.prescribedMedications,
+          followUpDate: record.followUpDate,
+          followUpNote: record.followUpNote,
+        },
+        recordHash: recordHash,
+        updatedBy: req.session.user.id,
+      });
+
       const dbEnd = Date.now();
       const dbDuration = dbEnd - dbStart;
 
@@ -669,10 +693,7 @@ router.get("/medical-records/edit/:id", async (req, res) => {
     );
 
     if (!hasAccessOnChain) {
-      req.flash(
-        "errors",
-        "Quyền truy cập bệnh án này đã bị thu hồi trên Blockchain."
-      );
+      req.flash("errors", "Bạn không có quyền truy cập vào bệnh án này.");
       return res.redirect("doctor/records");
     }
 
@@ -774,11 +795,32 @@ router.post(
           status: "Pending", // Đợi xác nhận từ blockchain
           recordHash: recordHash,
           lastVerifiedHash: record.recordHash, // Lưu hash cũ
+          updatedBy: req.session.user.id,
+          $inc: { currentVersion: 1 }, // Tăng số phiên bản
         },
         { new: true }
       );
 
       await updatedRecord.save();
+
+      // Lưu phiên bản mới vào lịch sử
+      await MedicalRecordVersionModel.create({
+        medicalRecordID: updatedRecord._id,
+        recordCode: updatedRecord.recordCode,
+        version: updatedRecord.currentVersion,
+        recordData: {
+          reasonForVisit: updatedRecord.reasonForVisit,
+          symptoms: updatedRecord.symptoms,
+          diagnosis: updatedRecord.diagnosis,
+          notes: updatedRecord.notes,
+          vitalSigns: updatedRecord.vitalSigns,
+          prescribedMedications: updatedRecord.prescribedMedications,
+          followUpDate: updatedRecord.followUpDate,
+          followUpNote: updatedRecord.followUpNote,
+        },
+        recordHash: recordHash,
+        updatedBy: req.session.user.id,
+      });
 
       return res.redirect(
         `/doctor/medical-records/confirm/${updatedRecord._id}?type=edit`

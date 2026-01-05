@@ -55,6 +55,13 @@ const medicalRecordSchema = new mongoose.Schema(
 
     // Status
     status: String, // Trạng thái bệnh án , pending: chờ blockchain, verified: đã lưu blockchain
+    currentVersion: { type: Number, default: 1 }, // Phiên bản hiện tại của bệnh án
+    updatedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "user",
+    }, // Người cập nhật phiên bản mới nhất
+
+    // Timestamps
 
     created_at: { type: Date, default: Date.now },
     updated_at: { type: Date, default: Date.now },
